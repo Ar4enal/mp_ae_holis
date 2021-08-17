@@ -195,7 +195,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
   private TapHelper tapHelper;
   private SampleRender render;
 
-  private PlaneRenderer planeRenderer;
+  public PlaneRenderer planeRenderer;
   private BackgroundRenderer backgroundRenderer;
   private Framebuffer virtualSceneFramebuffer;
   private boolean hasSetTextureNames = false;
@@ -277,6 +277,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     debugText = findViewById(R.id.debug_text);
 
     previewDisplayView = new SurfaceView(this);
+    previewDisplayView.setZOrderOnTop(true);
     setupPreviewDisplayView();
 
     // Initialize asset manager so that MediaPipe native libraries can access the app assets, e.g.,
@@ -339,7 +340,10 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
 
                 runOnUiThread(() -> debugText.setText(String.format("Angle = %f°\n" +
                         "Distance = %f", Math.toDegrees(angle), distance)));
+
+                Log.d(TAG, "onCreate: "+"Angle = %f°\n" + "Distance = %f"+Math.toDegrees(angle)+distance);
               }
+
             });
     // ########## End Mediapipe ##########
   }
