@@ -185,7 +185,7 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
                 mat.postRotate(90);
                 bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), mat, true);
 
-                //bitmap = Bitmap.createScaledBitmap(bitmap, 480, 640, true);
+                bitmap = Bitmap.createScaledBitmap(bitmap, 720, 1280, true);//好像要缩放到这个尺寸送进去计算的距离才正常
                 Log.d(TAG, "onDrawFrame: " + bitmap.getWidth()+" "+bitmap.getHeight());
 
                 bitmapProducer.setBitmapData(bitmap);
@@ -193,10 +193,10 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
                 //bitmap.recycle();
                 image.close();
 
-                if(Constants.intrinsicsFocalLength == 0 || Constants.imageHeight == 0 || Constants.imageWidth == 0) {
+                if(Constants.intrinsicsFocalLength == 0) {
                     Constants.intrinsicsFocalLength = camera.getTextureIntrinsics().getFocalLength()[0];
-                    //Constants.imageWidth = bitmap.getWidth();
-                    //Constants.imageHeight = bitmap.getHeight();
+                    Constants.imageWidth = bitmap.getWidth();
+                    Constants.imageHeight = bitmap.getHeight();
                     Log.d(TAG, "Constants change intrinsicsFocalLength " + Constants.intrinsicsFocalLength+" size "+Constants.imageWidth+" "+Constants.imageHeight);
                 }
 

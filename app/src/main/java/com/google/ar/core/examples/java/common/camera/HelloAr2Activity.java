@@ -49,11 +49,15 @@ import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.mediapipe.components.CameraHelper;
 import com.google.mediapipe.components.FrameProcessor;
 import com.google.mediapipe.components.PermissionHelper;
+import com.google.mediapipe.formats.proto.ClassificationProto;
+import com.google.mediapipe.formats.proto.DetectionProto;
+import com.google.mediapipe.formats.proto.LandmarkProto;
 import com.google.mediapipe.formats.proto.LandmarkProto.NormalizedLandmark;
 import com.google.mediapipe.formats.proto.LandmarkProto.NormalizedLandmarkList;
 import com.google.mediapipe.framework.AndroidAssetUtil;
 import com.google.mediapipe.framework.AndroidPacketCreator;
 import com.google.mediapipe.framework.Packet;
+import com.google.mediapipe.framework.PacketCallback;
 import com.google.mediapipe.framework.PacketGetter;
 import com.google.mediapipe.glutil.EglManager;
 
@@ -74,8 +78,10 @@ public class HelloAr2Activity extends AppCompatActivity {
     private static final String INPUT_VIDEO_STREAM_NAME = "input_video";
     private static final String OUTPUT_VIDEO_STREAM_NAME = "output_video";
     private static final String OUTPUT_LANDMARKS_STREAM_NAME = "hand_landmarks";
+    private static final String OUTPUT_HANDEDNESS_STREAM_NAME = "handedness";
+    private static final String OUTPUT_HAND_RECT = "hand_rects_from_palm_detections";
     private static final String INPUT_NUM_HANDS_SIDE_PACKET_NAME = "num_hands";
-    private static final int NUM_HANDS = 1;
+    private static final int NUM_HANDS = 2;
     private static final CameraHelper.CameraFacing CAMERA_FACING = CameraHelper.CameraFacing.BACK;
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
 
@@ -162,13 +168,45 @@ public class HelloAr2Activity extends AppCompatActivity {
                 OUTPUT_LANDMARKS_STREAM_NAME,
                 (packet) -> {
                     //Log.v("MediaPipe", "Received multi-hand landmarks packet.");
-                    List<NormalizedLandmarkList> multiHandLandmarks =
-                            PacketGetter.getProtoVector(packet, NormalizedLandmarkList.parser());
+                    Boolean handPresence = PacketGetter.getBool(packet);
+                    /*if (!handPresence) {
+                            Log.d(TAG, "[TS:" + packet.getTimestamp() + "] Hand presence is false, no hands detected.");
+                        }
 
-                    Log.v(TAG, "[TS:" + packet.getTimestamp() + "] " + getWristLandmarksDistance(multiHandLandmarks));
+
+                        List<DetectionProto.Detection> multiHandDetection = PacketGetter.getProtoVector(packet, DetectionProto.Detection.parser());
+                        for (DetectionProto.Detection item : multiHandDetection) {
+                            String string1 = item.getLabel(0);
+                            Log.d(TAG, "string1 " + string1);
+                            String string2 = item.getLabelBytes(0).toStringUtf8();
+                            Log.d(TAG, "string2 " + string2);
+                        }
+                     */
+
+
+                    List<NormalizedLandmarkList> multiHandLandmarks = PacketGetter.getProtoVector(packet, NormalizedLandmarkList.parser());
+
+                    float distance = getWristLandmarksDistance(multiHandLandmarks);
+
+                    Log.v(TAG, "[TS: MultiHand distance " + distance + " " + packet.getTimestamp() + "] "
+                            + getMultiHandLandmarksDebugString(multiHandLandmarks, distance));
 
                 });
 
+
+        processor.addPacketCallback(
+                OUTPUT_HANDEDNESS_STREAM_NAME,
+                (packet) -> {
+                    //Log.v(TAG, "Received multi-handness packet.");
+                    List<ClassificationProto.ClassificationList> multiHandedness =
+                            PacketGetter.getProtoVector(packet, ClassificationProto.ClassificationList.parser());
+                    Log.v(
+                            TAG,
+                            "[handness:"
+                                    + packet.getTimestamp()
+                                    + "] "
+                                    + getMultiHandednessDebugString(multiHandedness));
+                });
 
 
         startProducer();
@@ -343,7 +381,9 @@ public class HelloAr2Activity extends AppCompatActivity {
                         });
     }
 
-    private String getMultiHandLandmarksDebugString(List<NormalizedLandmarkList> multiHandLandmarks) {
+
+    //打印輸出結果
+    private String getMultiHandLandmarksDebugString(List<NormalizedLandmarkList> multiHandLandmarks, float distance) {
         if (multiHandLandmarks.isEmpty()) {
             return "No hand landmarks";
         }
@@ -360,18 +400,18 @@ public class HelloAr2Activity extends AppCompatActivity {
                 float y_px = (float) Math.min(Math.floor(landmark.getY() * Constants.imageHeight), Constants.imageHeight - 1);
                 float z_px = (float) Math.min(landmark.getZ() * Constants.imageWidth , Constants.imageWidth - 1);*/
 
-                float x_px = (float) landmark.getX() * Constants.imageWidth;
-                float y_px = (float) landmark.getY() * Constants.imageHeight;
-                float z_px = (float) landmark.getZ() * Constants.imageWidth;
+                float x_px = (float) ((landmark.getX() - 0.5) * Constants.imageWidth * distance / Constants.intrinsicsFocalLength);
+                float y_px = (float) ((landmark.getY() - 0.5) * Constants.imageHeight * distance / Constants.intrinsicsFocalLength);//实际计算的值 x与y反一下
+                float z_px = distance + (landmark.getZ() * Constants.imageWidth * distance / Constants.intrinsicsFocalLength);
 
 
                 multiHandLandmarksStr +=
                         "\t\tLandmark ["
                                 + landmarkIndex
                                 + "]: ("
-                                + x_px
-                                + ", "
                                 + y_px
+                                + ", "
+                                + x_px
                                 + ", "
                                 + z_px
                                 + ")\n";
@@ -404,7 +444,7 @@ public class HelloAr2Activity extends AppCompatActivity {
 
             float angle = (float) Math.acos(dot / (Math.sqrt(ux*ux+uy*uy+uz*uz) * Math.sqrt(vx*vx+vy*vy+vz*vz)));*/
 
-            if(Constants.imageWidth == 0 || Constants.imageHeight == 0 || Constants.intrinsicsFocalLength == 0) {
+            if (Constants.imageWidth == 0 || Constants.imageHeight == 0 || Constants.intrinsicsFocalLength == 0) {
                 return -1;
             }
 
@@ -418,13 +458,124 @@ public class HelloAr2Activity extends AppCompatActivity {
             //float distance = (float) (0.06 * 1108.0687 / distance_px);//mate 30 pro
             //float distance = (float) (0.06 * 474.89273 / distance_px);//sanxing s20
 
-
-            //Log.d(TAG, "onCreate: Distance = "+distance);
+            Log.d(TAG, "onCreate: Distance = " + distance);
             return distance;
         }
 
         return -1;
     }
+
+    private String getMultiHandednessDebugString(List<ClassificationProto.ClassificationList> multiHandLandmarks) {
+        if (multiHandLandmarks.isEmpty()) {
+            return "No Handedness";
+        }
+        String multiHandLandmarksStr = "Number of Handedness " + multiHandLandmarks.size() + "\n";
+        for (ClassificationProto.ClassificationList landmarks : multiHandLandmarks) {
+
+            for (ClassificationProto.Classification landmark : landmarks.getClassificationList()) {
+                multiHandLandmarksStr +=
+                        "\t\tHandedness ["
+                                + " DisplayName: "
+                                + landmark.getDisplayName()
+                                + " Label:  "
+                                + landmark.getLabel()
+                                + " Score "
+                                + landmark.getScore()
+                                + " Index "
+                                + landmark.getIndex()
+                                + ")\n";
+            }
+
+        }
+        return multiHandLandmarksStr;
+    }
+
+    private String handGestureCalculator(List<NormalizedLandmarkList> multiHandLandmarks) {
+        if (multiHandLandmarks.isEmpty()) {
+            return "No hand deal";
+        }
+        boolean thumbIsOpen = false;
+        boolean firstFingerIsOpen = false;
+        boolean secondFingerIsOpen = false;
+        boolean thirdFingerIsOpen = false;
+        boolean fourthFingerIsOpen = false;
+
+        for (NormalizedLandmarkList landmarks : multiHandLandmarks) {
+
+            List<NormalizedLandmark> landmarkList = landmarks.getLandmarkList();
+            float pseudoFixKeyPoint = landmarkList.get(2).getX();
+            if (pseudoFixKeyPoint < landmarkList.get(9).getX()) {
+                if (landmarkList.get(3).getX() < pseudoFixKeyPoint && landmarkList.get(4).getX() < pseudoFixKeyPoint) {
+                    thumbIsOpen = true;
+                }
+            }
+            if (pseudoFixKeyPoint > landmarkList.get(9).getX()) {
+                if (landmarkList.get(3).getX() > pseudoFixKeyPoint && landmarkList.get(4).getX() > pseudoFixKeyPoint) {
+                    thumbIsOpen = true;
+                }
+            }
+            Log.d(TAG, "pseudoFixKeyPoint == " + pseudoFixKeyPoint + "\nlandmarkList.get(2).getX() == " + landmarkList.get(2).getX()
+                    + "\nlandmarkList.get(4).getX() = " + landmarkList.get(4).getX());
+            pseudoFixKeyPoint = landmarkList.get(6).getY();
+            if (landmarkList.get(7).getY() < pseudoFixKeyPoint && landmarkList.get(8).getY() < landmarkList.get(7).getY()) {
+                firstFingerIsOpen = true;
+            }
+            pseudoFixKeyPoint = landmarkList.get(10).getY();
+            if (landmarkList.get(11).getY() < pseudoFixKeyPoint && landmarkList.get(12).getY() < landmarkList.get(11).getY()) {
+                secondFingerIsOpen = true;
+            }
+            pseudoFixKeyPoint = landmarkList.get(14).getY();
+            if (landmarkList.get(15).getY() < pseudoFixKeyPoint && landmarkList.get(16).getY() < landmarkList.get(15).getY()) {
+                thirdFingerIsOpen = true;
+            }
+            pseudoFixKeyPoint = landmarkList.get(18).getY();
+            if (landmarkList.get(19).getY() < pseudoFixKeyPoint && landmarkList.get(20).getY() < landmarkList.get(19).getY()) {
+                fourthFingerIsOpen = true;
+            }
+
+            // Hand gesture recognition
+            if (thumbIsOpen && firstFingerIsOpen && secondFingerIsOpen && thirdFingerIsOpen && fourthFingerIsOpen) {
+                return "FIVE";
+            } else if (!thumbIsOpen && firstFingerIsOpen && secondFingerIsOpen && thirdFingerIsOpen && fourthFingerIsOpen) {
+                return "FOUR";
+            } else if (thumbIsOpen && firstFingerIsOpen && secondFingerIsOpen && !thirdFingerIsOpen && !fourthFingerIsOpen) {
+                return "TREE";
+            } else if (thumbIsOpen && firstFingerIsOpen && !secondFingerIsOpen && !thirdFingerIsOpen && !fourthFingerIsOpen) {
+                return "TWO";
+            } else if (!thumbIsOpen && firstFingerIsOpen && !secondFingerIsOpen && !thirdFingerIsOpen && !fourthFingerIsOpen) {
+                return "ONE";
+            } else if (!thumbIsOpen && firstFingerIsOpen && secondFingerIsOpen && !thirdFingerIsOpen && !fourthFingerIsOpen) {
+                return "YEAH";
+            } else if (!thumbIsOpen && firstFingerIsOpen && !secondFingerIsOpen && !thirdFingerIsOpen && fourthFingerIsOpen) {
+                return "ROCK";
+            } else if (thumbIsOpen && firstFingerIsOpen && !secondFingerIsOpen && !thirdFingerIsOpen && fourthFingerIsOpen) {
+                return "Spider-Man";
+            } else if (!thumbIsOpen && !firstFingerIsOpen && !secondFingerIsOpen && !thirdFingerIsOpen && !fourthFingerIsOpen) {
+                return "fist";
+            } else if (!firstFingerIsOpen && secondFingerIsOpen && thirdFingerIsOpen && fourthFingerIsOpen && isThumbNearFirstFinger(landmarkList.get(4), landmarkList.get(8))) {
+                return "OK";
+            } else {
+                String info = "thumbIsOpen " + thumbIsOpen + "firstFingerIsOpen" + firstFingerIsOpen
+                        + "secondFingerIsOpen" + secondFingerIsOpen +
+                        "thirdFingerIsOpen" + thirdFingerIsOpen + "fourthFingerIsOpen" + fourthFingerIsOpen;
+                Log.d(TAG, "handGestureCalculator: == " + info);
+                return "___";
+            }
+        }
+        return "___";
+    }
+
+    private boolean isThumbNearFirstFinger(LandmarkProto.NormalizedLandmark point1, LandmarkProto.NormalizedLandmark point2) {
+        double distance = getEuclideanDistanceAB(point1.getX(), point1.getY(), point2.getX(), point2.getY());
+        return distance < 0.1;
+    }
+
+    private double getEuclideanDistanceAB(double a_x, double a_y, double b_x, double b_y) {
+        double dist = Math.pow(a_x - b_x, 2) + Math.pow(a_y - b_y, 2);
+        return Math.sqrt(dist);
+    }
+
+
     // ########## End Mediapipe ##########
 
 
@@ -439,14 +590,14 @@ public class HelloAr2Activity extends AppCompatActivity {
         } else {
             config.setDepthMode(Config.DepthMode.DISABLED);
         }
-      /*  CameraConfigFilter cameraConfigFilter =
+    /*    CameraConfigFilter cameraConfigFilter =
                 new CameraConfigFilter(session)
                         .setTargetFps(EnumSet.of(CameraConfig.TargetFps.TARGET_FPS_60, CameraConfig.TargetFps.TARGET_FPS_30));
         List<CameraConfig> cameraConfigs = session.getSupportedCameraConfigs(cameraConfigFilter);
         session.setCameraConfig(cameraConfigs.get(cameraConfigs.size() - 2));//选择分辨率最高的
         for (int i = 0; i < cameraConfigs.size(); i++) {
             Log.d(TAG, "initSession: setCameraConfig" + cameraConfigs.get(i).getFpsRange() + " " + cameraConfigs.get(i).getImageSize());
-        }*/
-        session.configure(config);
+        }
+        session.configure(config);*/
     }
 }
