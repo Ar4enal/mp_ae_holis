@@ -12,6 +12,7 @@ public class BmpProducer extends Thread {
 
     public int height = 513,width = 513;
     Bitmap bmp;
+    private boolean running = false;
 
     public BmpProducer(Context context){
         //bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.img2);
@@ -20,6 +21,7 @@ public class BmpProducer extends Thread {
         //height = bmp.getHeight();
         //width = bmp.getWidth();
         start();
+        running = true;
     }
 
     BmpProducer(Bitmap bitmap,CustomFrameAvailableListner customFrameAvailableListner){
@@ -42,8 +44,8 @@ public class BmpProducer extends Thread {
     @Override
     public void run() {
         super.run();
-        while ((true)){
-            if(bmp==null || customFrameAvailableListner == null)
+        while ((running)){
+            if(bmp == null || customFrameAvailableListner == null)
                 continue;
             Log.d(TAG,"Writing frame");
             customFrameAvailableListner.onFrame(bmp);
@@ -59,5 +61,9 @@ public class BmpProducer extends Thread {
                 Log.d(TAG,e.toString());
             }
         }
+    }
+
+    public void close(){
+        running = false;
     }
 }

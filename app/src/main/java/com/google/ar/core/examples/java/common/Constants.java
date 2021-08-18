@@ -9,4 +9,6 @@ public class Constants {
     public static int textureHeight = 1280;
 
     public static float intrinsicsFocalLength = 0;
+
+    public static long previousTimestamp = 0;//解決activity退出前台再次進入，送入mediapipe時間戳不對的問題
 }

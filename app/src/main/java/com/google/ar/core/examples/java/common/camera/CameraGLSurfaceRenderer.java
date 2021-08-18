@@ -64,9 +64,12 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
     BmpProducer bitmapProducer;
 
 
-    public CameraGLSurfaceRenderer(HelloAr2Activity mainActivity, BmpProducer mapProducer) {
+    public CameraGLSurfaceRenderer(HelloAr2Activity mainActivity) {
         this.mainActivity = mainActivity;
-        this.bitmapProducer = mapProducer;
+    }
+
+    public void setBitmapProducer(BmpProducer mapProducer) {
+        bitmapProducer = mapProducer;
     }
 
     private final float squareVertices[] = { // in counterclockwise order:
@@ -152,52 +155,54 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
                 Frame frame = mainActivity.session.update();
                 Camera camera = frame.getCamera();
 
+                if(bitmapProducer != null) {
+                    Image image = frame.acquireCameraImage();
+                    byte[] nv21;
+                    // Get the three planes.
+                    ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
+                    ByteBuffer uBuffer = image.getPlanes()[1].getBuffer();
+                    ByteBuffer vBuffer = image.getPlanes()[2].getBuffer();
 
-                Image image = frame.acquireCameraImage();
-                byte[] nv21;
-                // Get the three planes.
-                ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
-                ByteBuffer uBuffer = image.getPlanes()[1].getBuffer();
-                ByteBuffer vBuffer = image.getPlanes()[2].getBuffer();
+                    int ySize = yBuffer.remaining();
+                    int uSize = uBuffer.remaining();
+                    int vSize = vBuffer.remaining();
+                    //Log.d(TAG, "onDrawFrame: " + ySize + " " + uSize + " " + vSize);
 
-                int ySize = yBuffer.remaining();
-                int uSize = uBuffer.remaining();
-                int vSize = vBuffer.remaining();
-                //Log.d(TAG, "onDrawFrame: " + ySize + " " + uSize + " " + vSize);
+                    nv21 = new byte[ySize + uSize + vSize];
 
-                nv21 = new byte[ySize + uSize + vSize];
+                    //U and V are swapped
+                    yBuffer.get(nv21, 0, ySize);
+                    vBuffer.get(nv21, ySize, vSize);
+                    uBuffer.get(nv21, ySize + vSize, uSize);
 
-                //U and V are swapped
-                yBuffer.get(nv21, 0, ySize);
-                vBuffer.get(nv21, ySize, vSize);
-                uBuffer.get(nv21, ySize + vSize, uSize);
+                    int width = image.getWidth();
+                    int height = image.getHeight();
 
-                int width = image.getWidth();
-                int height = image.getHeight();
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    YuvImage yuv = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
+                    yuv.compressToJpeg(new Rect(0, 0, width, height), 100, out);
+                    byte[] byteArray = out.toByteArray();
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
 
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                YuvImage yuv = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
-                yuv.compressToJpeg(new Rect(0, 0, width, height), 100, out);
-                byte[] byteArray = out.toByteArray();
-                Bitmap bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
+                    android.graphics.Matrix mat = new android.graphics.Matrix();//旋转90度
+                    mat.postRotate(90);
+                    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), mat, true);
 
-                android.graphics.Matrix mat = new android.graphics.Matrix();//旋转90度
-                mat.postRotate(90);
-                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), mat, true);
+                    bitmap = Bitmap.createScaledBitmap(bitmap, 720, 1280, true);//好像要缩放到这个尺寸送进去计算的距离才正常
+                    Log.d(TAG, "onDrawFrame: " + bitmap.getWidth() + " " + bitmap.getHeight());
 
-                bitmap = Bitmap.createScaledBitmap(bitmap, 720, 1280, true);//好像要缩放到这个尺寸送进去计算的距离才正常
-                Log.d(TAG, "onDrawFrame: " + bitmap.getWidth()+" "+bitmap.getHeight());
+                    bitmapProducer.setBitmapData(bitmap);
 
-                bitmapProducer.setBitmapData(bitmap);
+                    //bitmap.recycle();
+                    image.close();
 
-                //bitmap.recycle();
-                image.close();
 
-                if(Constants.intrinsicsFocalLength == 0) {
-                    Constants.intrinsicsFocalLength = camera.getTextureIntrinsics().getFocalLength()[0];
-                    Constants.imageWidth = bitmap.getWidth();
-                    Constants.imageHeight = bitmap.getHeight();
-                    Log.d(TAG, "Constants change intrinsicsFocalLength " + Constants.intrinsicsFocalLength+" size "+Constants.imageWidth+" "+Constants.imageHeight);
+                    if (Constants.intrinsicsFocalLength == 0) {
+                        Constants.intrinsicsFocalLength = camera.getTextureIntrinsics().getFocalLength()[0];
+                        Constants.imageWidth = bitmap.getWidth();
+                        Constants.imageHeight = bitmap.getHeight();
+                        Log.d(TAG, "Constants change intrinsicsFocalLength " + Constants.intrinsicsFocalLength + " size " + Constants.imageWidth + " " + Constants.imageHeight);
+                    }
                 }
 
 

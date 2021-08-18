@@ -88,6 +88,7 @@ public class HelloAr2Activity extends AppCompatActivity {
     private static class HandLandmarks {
         public static int WRIST = 0;
         public static int THUMB_TIP = 4;
+        public static int INDEX_FINGER_MXP = 5;
         public static int INDEX_FINGER_TIP = 8;
         public static int PINKY_MCP = 17;
     }
@@ -168,11 +169,10 @@ public class HelloAr2Activity extends AppCompatActivity {
                 OUTPUT_LANDMARKS_STREAM_NAME,
                 (packet) -> {
                     //Log.v("MediaPipe", "Received multi-hand landmarks packet.");
-                    Boolean handPresence = PacketGetter.getBool(packet);
-                    /*if (!handPresence) {
-                            Log.d(TAG, "[TS:" + packet.getTimestamp() + "] Hand presence is false, no hands detected.");
+                    /*Boolean handPresence = PacketGetter.getBool(packet);
+                    if (!handPresence) {
+                            Log.d(TAG, " Hand presence is false, no hands detected.");
                         }
-
 
                         List<DetectionProto.Detection> multiHandDetection = PacketGetter.getProtoVector(packet, DetectionProto.Detection.parser());
                         for (DetectionProto.Detection item : multiHandDetection) {
@@ -209,11 +209,11 @@ public class HelloAr2Activity extends AppCompatActivity {
                 });
 
 
-        startProducer();
+
         // ########## End Mediapipe ##########
 
 
-        glSurfaceRenderer = new CameraGLSurfaceRenderer(this, bitmapProducer);
+        glSurfaceRenderer = new CameraGLSurfaceRenderer(this);
         surfaceView.setPreserveEGLContextOnPause(true);
         surfaceView.setEGLContextClientVersion(2);
         surfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
@@ -235,6 +235,7 @@ public class HelloAr2Activity extends AppCompatActivity {
         }
 
         super.onDestroy();
+        Log.d(TAG, "onDestroy: ");
     }
 
     @Override
@@ -298,6 +299,7 @@ public class HelloAr2Activity extends AppCompatActivity {
 
         converter = new BitmapConverter(eglManager.getContext());
         converter.setConsumer(processor);
+        startProducer();
         Log.d(TAG, "onResume: ");
     }
 
@@ -315,6 +317,8 @@ public class HelloAr2Activity extends AppCompatActivity {
 
         // ########## Begin Mediapipe ##########
         converter.close();
+        bitmapProducer.close();
+        Log.d(TAG, "onPause: ");
 
         // Hide preview display until we re-open the camera again.
         previewDisplayView.setVisibility(View.GONE);
@@ -349,6 +353,7 @@ public class HelloAr2Activity extends AppCompatActivity {
     // ########## Begin Mediapipe ##########
     private void startProducer() {
         bitmapProducer = new BmpProducer(this);
+        glSurfaceRenderer.setBitmapProducer(bitmapProducer);
         previewDisplayView.setVisibility(View.VISIBLE);
     }
 
@@ -429,6 +434,7 @@ public class HelloAr2Activity extends AppCompatActivity {
             NormalizedLandmark indexTip = hand.getLandmark(HandLandmarks.INDEX_FINGER_TIP);
             NormalizedLandmark wrist = hand.getLandmark(HandLandmarks.WRIST);
             NormalizedLandmark pinkyMCP = hand.getLandmark(HandLandmarks.PINKY_MCP);
+            NormalizedLandmark indexFingerMXP = hand.getLandmark(HandLandmarks.INDEX_FINGER_MXP);
 
          /*   // u = thumbTip - wrist
             // v = indexTip - wrist
@@ -448,18 +454,26 @@ public class HelloAr2Activity extends AppCompatActivity {
                 return -1;
             }
 
-            // t = indexTip - thumbTip
-            float tx = pinkyMCP.getX() * Constants.imageWidth - wrist.getX() * Constants.imageWidth;
-            float ty = pinkyMCP.getY() * Constants.imageHeight - wrist.getY() * Constants.imageHeight;
-            float tz = pinkyMCP.getZ() * Constants.imageWidth - wrist.getZ() * Constants.imageWidth;
-            float distance_px = (float) Math.sqrt(tx * tx + ty * ty + tz * tz);
+            //使用0-17骨骼之間距離計算
+            float tx17 = pinkyMCP.getX() * Constants.imageWidth - wrist.getX() * Constants.imageWidth;
+            float ty17 = pinkyMCP.getY() * Constants.imageHeight - wrist.getY() * Constants.imageHeight;
+            float tz17 = pinkyMCP.getZ() * Constants.imageWidth - wrist.getZ() * Constants.imageWidth;
+            float distance_px17 = (float) Math.sqrt(tx17 * tx17 + ty17 * ty17 + tz17 * tz17);
 
-            float distance = (float) (0.06 * Constants.intrinsicsFocalLength / distance_px);//mate 20 X
+            float distance17 = (float) (0.06 * Constants.intrinsicsFocalLength / distance_px17);//mate 20 X
             //float distance = (float) (0.06 * 1108.0687 / distance_px);//mate 30 pro
             //float distance = (float) (0.06 * 474.89273 / distance_px);//sanxing s20
 
-            Log.d(TAG, "onCreate: Distance = " + distance);
-            return distance;
+        /*    //使用0-5骨骼之間距離計算
+            float tx5 = indexFingerMXP.getX() * Constants.imageWidth - wrist.getX() * Constants.imageWidth;
+            float ty5 = indexFingerMXP.getY() * Constants.imageHeight - wrist.getY() * Constants.imageHeight;
+            float tz5 = indexFingerMXP.getZ() * Constants.imageWidth - wrist.getZ() * Constants.imageWidth;
+            float distance_px5 = (float) Math.sqrt(tx5 * tx5 + ty5 * ty5 + tz5 * tz5);
+
+            float distance5 = (float) (0.08 * Constants.intrinsicsFocalLength / distance_px5);//mate 20 X*/
+
+            Log.d(TAG, "onCreate: Distance = " +" " + distance17);
+            return distance17;
         }
 
         return -1;

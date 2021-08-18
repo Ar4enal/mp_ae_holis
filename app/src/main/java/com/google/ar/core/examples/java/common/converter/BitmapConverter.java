@@ -6,6 +6,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.google.ar.core.examples.java.common.Constants;
 import com.google.mediapipe.components.TextureFrameConsumer;
 import com.google.mediapipe.components.TextureFrameProducer;
 import com.google.mediapipe.framework.AppTextureFrame;
@@ -231,7 +232,8 @@ public class BitmapConverter implements TextureFrameProducer, CustomFrameAvailab
                 && textureTimestamp + nextFrameTimestampOffset <= previousTimestamp) {
             nextFrameTimestampOffset = previousTimestamp + 1 - textureTimestamp;
         }
-        outputFrame.setTimestamp(textureTimestamp + nextFrameTimestampOffset);
+        //outputFrame.setTimestamp(textureTimestamp + nextFrameTimestampOffset);
+        outputFrame.setTimestamp(Constants.previousTimestamp++);//解決執行onpause之後再次進入程序，無法運行的問題
         previousTimestamp = outputFrame.getTimestamp();
         previousTimestampValid = true;
     }
