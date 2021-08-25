@@ -5,5 +5,5 @@ import android.graphics.Bitmap;
 
 public interface CustomFrameAvailableListner {
 
-    public void onFrame(Bitmap bitmap);
+    public void onFrame(long timestamp, int destinationTextureId, int viewWidth, int viewHeight);
 }

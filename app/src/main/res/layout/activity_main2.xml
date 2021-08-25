@@ -19,7 +19,7 @@
     android:layout_height="match_parent"
     tools:context="com.google.ar.core.examples.java.helloar.HelloArActivity">
 
-  <android.opengl.GLSurfaceView
+  <com.google.ar.core.examples.java.common.egl.EglSurfaceView
       android:id="@+id/surfaceview"
       android:layout_width="match_parent"
       android:layout_height="match_parent"

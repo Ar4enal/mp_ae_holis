@@ -10,25 +10,21 @@ public class BmpProducer extends Thread {
 
     CustomFrameAvailableListner customFrameAvailableListner;
 
-    public int height = 513,width = 513;
-    Bitmap bmp;
     private boolean running = false;
 
+    long timestamp;
+    int destinationTextureId;
+    int viewWidth = 720;
+    int viewHeight = 1280;
+    boolean sendVaild = false;
+
     public BmpProducer(Context context){
-        //bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.img2);
-        //bmp = Bitmap.createScaledBitmap(bmp,480,640,true);
-        //bmp = null;
-        //height = bmp.getHeight();
-        //width = bmp.getWidth();
-        start();
+        //start();
         running = true;
     }
 
     BmpProducer(Bitmap bitmap,CustomFrameAvailableListner customFrameAvailableListner){
-        bmp = bitmap;
         this.customFrameAvailableListner = customFrameAvailableListner;
-        height = bmp.getHeight();
-        width = bmp.getWidth();
         start();
     }
 
@@ -36,19 +32,28 @@ public class BmpProducer extends Thread {
         this.customFrameAvailableListner = customFrameAvailableListner;
     }
 
-    public void setBitmapData(Bitmap bitmap) {
-        bmp = bitmap;
+    public void setBitmapData( long ts, int TextureId, int width, int height) {
         Log.d(TAG, "setBitmapData: ");
+        timestamp = ts;
+        destinationTextureId = TextureId;
+        viewWidth = width;
+        viewHeight = height;
+        sendVaild = true;
+
+        if(customFrameAvailableListner == null)
+            return;
+        customFrameAvailableListner.onFrame(timestamp, destinationTextureId, viewWidth, viewHeight);
     }
 
     @Override
     public void run() {
         super.run();
         while ((running)){
-            if(bmp == null || customFrameAvailableListner == null)
+            if(customFrameAvailableListner == null || sendVaild == false)
                 continue;
             Log.d(TAG,"Writing frame");
-            customFrameAvailableListner.onFrame(bmp);
+            customFrameAvailableListner.onFrame(timestamp, destinationTextureId, viewWidth, viewHeight);
+            sendVaild = false;
             /*OTMainActivity.imageView.post(new Runnable() {
                 @Override
                 public void run() {
@@ -56,7 +61,7 @@ public class BmpProducer extends Thread {
                 }
             });*/
             try{
-                Thread.sleep(17);
+                Thread.sleep(5);
             }catch (Exception e){
                 Log.d(TAG,e.toString());
             }

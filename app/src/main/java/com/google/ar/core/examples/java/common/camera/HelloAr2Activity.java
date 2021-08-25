@@ -36,6 +36,7 @@ import com.google.ar.core.Session;
 import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
+import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
 import com.google.ar.core.examples.java.common.helpers.CameraPermissionHelper;
 import com.google.ar.core.examples.java.common.helpers.DisplayRotationHelper;
 import com.google.ar.core.examples.java.common.helpers.FullScreenHelper;
@@ -121,7 +122,7 @@ public class HelloAr2Activity extends AppCompatActivity {
 
 
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
-    private GLSurfaceView surfaceView;
+    private EglSurfaceView surfaceView;
 
     public Session session;
     private final SnackbarHelper messageSnackbarHelper = new SnackbarHelper();
@@ -209,11 +210,11 @@ public class HelloAr2Activity extends AppCompatActivity {
                 });
 
 
-
         // ########## End Mediapipe ##########
 
 
         glSurfaceRenderer = new CameraGLSurfaceRenderer(this);
+        surfaceView.setSharedContext(eglManager.getContext());
         surfaceView.setPreserveEGLContextOnPause(true);
         surfaceView.setEGLContextClientVersion(2);
         surfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
@@ -405,9 +406,9 @@ public class HelloAr2Activity extends AppCompatActivity {
                 float y_px = (float) Math.min(Math.floor(landmark.getY() * Constants.imageHeight), Constants.imageHeight - 1);
                 float z_px = (float) Math.min(landmark.getZ() * Constants.imageWidth , Constants.imageWidth - 1);*/
 
-                float x_px = (float) ((landmark.getX() - 0.5) * Constants.imageWidth * distance / Constants.intrinsicsFocalLength);
-                float y_px = (float) ((landmark.getY() - 0.5) * Constants.imageHeight * distance / Constants.intrinsicsFocalLength);//实际计算的值 x与y反一下
-                float z_px = distance + (landmark.getZ() * Constants.imageWidth * distance / Constants.intrinsicsFocalLength);
+                float x_px = (float) ((landmark.getX() - 0.5) * Constants.mediapipeWidth * distance / Constants.intrinsicsFocalLength);
+                float y_px = (float) ((landmark.getY() - 0.5) * Constants.mediapipeHeight * distance / Constants.intrinsicsFocalLength);//实际计算的值 x与y反一下
+                float z_px = distance + (landmark.getZ() * Constants.mediapipeWidth * distance / Constants.intrinsicsFocalLength);
 
 
                 multiHandLandmarksStr +=
@@ -450,14 +451,14 @@ public class HelloAr2Activity extends AppCompatActivity {
 
             float angle = (float) Math.acos(dot / (Math.sqrt(ux*ux+uy*uy+uz*uz) * Math.sqrt(vx*vx+vy*vy+vz*vz)));*/
 
-            if (Constants.imageWidth == 0 || Constants.imageHeight == 0 || Constants.intrinsicsFocalLength == 0) {
+            if (Constants.mediapipeWidth == 0 || Constants.mediapipeHeight == 0 || Constants.intrinsicsFocalLength == 0) {
                 return -1;
             }
 
             //使用0-17骨骼之間距離計算
-            float tx17 = pinkyMCP.getX() * Constants.imageWidth - wrist.getX() * Constants.imageWidth;
-            float ty17 = pinkyMCP.getY() * Constants.imageHeight - wrist.getY() * Constants.imageHeight;
-            float tz17 = pinkyMCP.getZ() * Constants.imageWidth - wrist.getZ() * Constants.imageWidth;
+            float tx17 = pinkyMCP.getX() * Constants.mediapipeWidth - wrist.getX() * Constants.mediapipeWidth;
+            float ty17 = pinkyMCP.getY() * Constants.mediapipeHeight - wrist.getY() * Constants.mediapipeHeight;
+            float tz17 = pinkyMCP.getZ() * Constants.mediapipeWidth - wrist.getZ() * Constants.mediapipeWidth;
             float distance_px17 = (float) Math.sqrt(tx17 * tx17 + ty17 * ty17 + tz17 * tz17);
 
             float distance17 = (float) (0.06 * Constants.intrinsicsFocalLength / distance_px17);//mate 20 X

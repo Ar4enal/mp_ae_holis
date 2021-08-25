@@ -12,6 +12,7 @@ import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.util.Log;
 import android.view.SurfaceHolder;
+
 import com.google.ar.core.Camera;
 import com.google.ar.core.Frame;
 import com.google.ar.core.Plane;
@@ -19,9 +20,13 @@ import com.google.ar.core.TrackingState;
 import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
+import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
 import com.google.mediapipe.components.FrameProcessor;
+import com.google.mediapipe.glutil.ShaderUtil;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -31,7 +36,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 
-public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
+public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     //zicamera 渲染器单目 无畸变
 
     private static final String TAG = "GLSurfaceRenderer";
@@ -91,7 +96,23 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
             -1, 1, 0, 1,
             1, 1, 0, 0
     };
+
+    private final float[] VERTEX_DATA_FBO = new float[]{
+            -1, -1, 0, 1.0f,
+            1, -1, 0, 0.0f,
+            -1, 1, 1, 1,
+            1, 1, 1, 0
+    };
     private FloatBuffer vertexBuffer = createBuffer(VERTEX_DATA);
+
+    private FloatBuffer vertexBufferFBO = createBuffer(VERTEX_DATA_FBO);
+
+    private int mOffscreenTexture;
+
+    int destinationTextureId;
+
+    // 帧缓冲对象 - 颜色、深度、模板附着点，纹理对象可以连接到帧缓冲区对象的颜色附着点
+    private int mFrameBuffer;
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -100,15 +121,14 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
 
         // Create the texture and pass it to ARCore session to be filled during update().
         // backgroundRenderer.createOnGlThread(context);
-        mTexture = createVideoTexture();
 
 
         // Prepare the other rendering objects.
-        try {
+      /*  try {
             mainActivity.planeRenderer.createOnGlThread(mainActivity, "models/trigrid.png");
         } catch (IOException e) {
             Log.e(TAG, "Failed to read plane texture");
-        }
+        }*/
 
         //mPointCloud.createOnGlThread(context);
         initTexture();
@@ -121,13 +141,16 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
             Log.d(TAG, "onSurfaceChanged(), <= 0");
             return;
         }
-        Log.d(TAG, "onSurfaceChanged()");
+        Log.d(TAG, "onSurfaceChanged() " + width + " " + height);
 
         mainActivity.displayRotationHelper.onSurfaceChanged(width, height);
         GLES20.glViewport(0, 0, width, height);
         viewWidth = width;
         viewHeight = height;
 
+        mTexture = createVideoTexture();
+
+        createFBO();
     }
 
     @Override
@@ -155,7 +178,7 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
                 Frame frame = mainActivity.session.update();
                 Camera camera = frame.getCamera();
 
-                if(bitmapProducer != null) {
+               /* if(bitmapProducer != null) {
                     Image image = frame.acquireCameraImage();
                     byte[] nv21;
                     // Get the three planes.
@@ -203,6 +226,11 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
                         Constants.imageHeight = bitmap.getHeight();
                         Log.d(TAG, "Constants change intrinsicsFocalLength " + Constants.intrinsicsFocalLength + " size " + Constants.imageWidth + " " + Constants.imageHeight);
                     }
+                }*/
+
+                if (Constants.intrinsicsFocalLength == 0) {
+                    Constants.intrinsicsFocalLength = camera.getTextureIntrinsics().getFocalLength()[0];
+                    Log.d(TAG, "Constants change intrinsicsFocalLength " + Constants.intrinsicsFocalLength );
                 }
 
 
@@ -210,8 +238,8 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
                 //Log.d(TAG, "onDrawFrame: ************ " + Arrays.toString(camera.getTextureIntrinsics().getFocalLength()));
 
                 // Draw background.
-                // backgroundRenderer.draw(frame);
-                draw();
+                drawFrameBuffer();
+                draw(mOffscreenTexture);
 
                 // If not tracking, don't draw 3d objects. 如果获取的camera状态不对，不绘制3D 物体，需要注释
                 if (camera.getTrackingState() == TrackingState.PAUSED) {
@@ -219,15 +247,9 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
                 }
 
 
-                // Visualize tracked points.
-
-                // Get camera matrix  and projection matrix.
-                //camera.getViewMatrix(viewmtx, 0);
-                camera.getProjectionMatrix(projmtx, 0, 0.1f, 100.0f);
-
-
-                // Visualize planes.
-                mainActivity.planeRenderer.drawPlanes(mainActivity.session.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);
+                // Visualize tracked points.   Visualize planes.
+            /*    camera.getProjectionMatrix(projmtx, 0, 0.1f, 100.0f);
+                mainActivity.planeRenderer.drawPlanes(mainActivity.session.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);*/
 
 
             }
@@ -253,7 +275,76 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
         mTextureCoordHandle = GLES20.glGetAttribLocation(programHandle, "inputTextureCoordinate");
     }
 
-    private void draw() {
+
+    private void drawFrameBuffer() {
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFrameBuffer);
+
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+
+
+        //使用程序
+        GLES20.glUseProgram(programHandle);
+
+        // Enable vertex arrays
+        GLES20.glEnableVertexAttribArray(mPositionHandle);
+        GLES20.glEnableVertexAttribArray(mTextureCoordHandle);
+
+        Matrix.setIdentityM(displayMatrix, 0);
+        //Matrix.scaleM(displayMatrix,0,720/viewWidth,1280/viewHeight,1);
+
+        // GLES20.gl
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexture);//绑定渲染纹理
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programHandle, "sampler2d1"), 0);
+        //
+        vertexBufferFBO.position(0);
+        GLES20.glVertexAttribPointer(//设置顶点位置值
+                mPositionHandle,
+                POSITION_COORDS_PER_VERTEX,
+                GLES20.GL_FLOAT,
+                false,
+                VERTEX_STRIDE_BYTES,
+                vertexBufferFBO);
+
+        // Load texture data.
+        vertexBufferFBO.position(POSITION_COORDS_PER_VERTEX);
+        GLES20.glVertexAttribPointer(
+                mTextureCoordHandle,
+                TEXTURE_COORDS_PER_VERTEX,
+                GLES20.GL_FLOAT,
+                false,
+                VERTEX_STRIDE_BYTES,
+                vertexBufferFBO);
+
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programHandle, "stereoARMode"), 2);
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programHandle, "eyeA"), 0.0f);
+
+
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, displayMatrix, 0);
+        GLES20.glViewport(0, 0, Constants.mediapipeWidth, Constants.mediapipeHeight);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_DATA.length / CPV);
+
+
+        //GLES20.glDeleteTextures(1, new int[]{destinationTextureId}, 0);
+        destinationTextureId = createRgbaTexture(Constants.mediapipeWidth, Constants.mediapipeHeight);
+        //GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, destinationTextureId);
+        GLES20.glCopyTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, 0, 0, Constants.mediapipeWidth, Constants.mediapipeHeight);
+        //destinationTextureId = ShaderUtil.createRgbaTexture(bitmap);
+        bitmapProducer.setBitmapData(0, destinationTextureId, Constants.mediapipeWidth, Constants.mediapipeHeight);
+        //GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        Log.d(TAG, "destinationTextureId: " + destinationTextureId );
+
+
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+
+        // Disable vertex arrays
+        GLES20.glDisableVertexAttribArray(mPositionHandle);
+        GLES20.glDisableVertexAttribArray(mTextureCoordHandle);
+    }
+
+
+    private void draw(int texture) {
         // No need to test or write depth, the screen quad has arbitrary depth, and is expected
         // to be drawn first.
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
@@ -271,7 +362,7 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
 
         // GLES20.gl
         GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexture);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture);
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programHandle, "sampler2d1"), 0);
         //
         vertexBuffer.position(0);
@@ -314,6 +405,7 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
 
     }
 
+
     public FloatBuffer createBuffer(float[] data) {
         ByteBuffer bb = ByteBuffer.allocateDirect(data.length * BYTES_PER_FLOAT);
         bb.order(ByteOrder.nativeOrder());
@@ -335,4 +427,64 @@ public class CameraGLSurfaceRenderer implements GLSurfaceView.Renderer {
         return texture[0];
     }
 
+    /**
+     * 创建fbo
+     */
+    private void createFBO() {
+        int[] values = new int[1];
+
+        GLES20.glGenTextures(1, values, 0);
+        mOffscreenTexture = values[0];   // expected > 0
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mOffscreenTexture);
+
+        // Create texture storage.
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, viewWidth, viewHeight, 0,
+                GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+        //ShaderUtil.checkGlError("glTexImage2D");
+
+        // Set parameters.  We're probably using non-power-of-two dimensions, so
+        // some values may not be available for use.
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER,
+                GLES20.GL_NEAREST);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER,
+                GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S,
+                GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T,
+                GLES20.GL_CLAMP_TO_EDGE);
+
+
+        //1. 创建FBO
+        GLES20.glGenFramebuffers(1, values, 0);
+        mFrameBuffer = values[0];    // expected > 0
+        //2. 绑定FBO
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFrameBuffer);
+
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, mOffscreenTexture, 0);
+
+
+        if (GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER) != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            Log.i("", "Framebuffer error");
+        }
+
+        //7. 解绑纹理和FBO
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+    }
+
+    public int createRgbaTexture(int width, int height) {
+        int[] textureName = new int[]{0};
+        GLES20.glGenTextures(1, textureName, 0);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureName[0]);
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, (Buffer) null);
+        //ShaderUtil.checkGlError("glTexImage2D");
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        //ShaderUtil.checkGlError("texture setup");
+        return textureName[0];
+    }
 }
