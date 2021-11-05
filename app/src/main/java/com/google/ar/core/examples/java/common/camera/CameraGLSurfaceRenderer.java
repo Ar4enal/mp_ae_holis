@@ -101,19 +101,33 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
             0.0f, 0.0f
     };
 
-    private final float[] VERTEX_DATA = new float[]{
+/*    private final float squareVertices[] = { // in counterclockwise order:
+            -1.0f, -1.0f,
+            1.0f, -1.0f,
+            -1.0f, 1.0f,
+            1.0f, 1.0f
+    };
+    private final float textureVerticesPreview[] = { // in counterclockwise order:
+            0.0f, 1.0f,
+            1.0f, 1.0f,
+            0.0f, 0.0f,
+            1.0f, 0.0f
+    };*/
+
+    private final float[] VERTEX_DATA_FBO = new float[]{
             -1, -1, 1, 1.0f,
             1, -1, 1, 0.0f,
             -1, 1, 0, 1,
             1, 1, 0, 0
     };
 
-    private final float[] VERTEX_DATA_FBO = new float[]{
+    private final float[] VERTEX_DATA = new float[]{
             -1, -1, 0, 1.0f,
             1, -1, 0, 0.0f,
             -1, 1, 1, 1,
             1, 1, 1, 0
     };
+
     private FloatBuffer vertexBuffer = createBuffer(VERTEX_DATA);
 
     private FloatBuffer vertexBufferFBO = createBuffer(VERTEX_DATA_FBO);
