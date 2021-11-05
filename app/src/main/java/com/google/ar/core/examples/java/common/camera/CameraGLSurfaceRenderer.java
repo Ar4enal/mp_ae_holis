@@ -76,7 +76,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
 
     private FaceGeometryDisplay mFaceGeometryDisplay = new FaceGeometryDisplay();
     private Context mContext;
-    private static String ServerIp = "192.168.0.1";
+    private static String ServerIp = Constants.udpServerIp;
     private static final int ServerPort = 8002;
 
     public CameraGLSurfaceRenderer(Context context, HelloAr2Activity mainActivity) {

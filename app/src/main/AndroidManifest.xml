@@ -73,6 +73,9 @@
     <meta-data
         android:name="converterNumBuffers"
         android:value="3" />
+    <meta-data
+        android:name="udpServerIp"
+        android:value="192.168.0.1" />
 
   </application>
 

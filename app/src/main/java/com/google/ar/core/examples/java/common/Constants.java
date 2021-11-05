@@ -11,4 +11,6 @@ public class Constants {
     public static float intrinsicsFocalLength = 0;
 
     public static long previousTimestamp = 0;//解決activity退出前台再次進入，送入mediapipe時間戳不對的問題
+
+    public static String udpServerIp = "192.168.0.1";
 }

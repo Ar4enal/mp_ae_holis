@@ -34,6 +34,7 @@ import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
+import com.google.ar.core.examples.java.common.helpers.AudioRecordUtil;
 import com.google.ar.core.examples.java.common.helpers.CameraPermissionHelper;
 import com.google.ar.core.examples.java.common.helpers.DisplayRotationHelper;
 import com.google.ar.core.examples.java.common.helpers.FullScreenHelper;
@@ -59,6 +60,10 @@ import com.huawei.hiar.exceptions.ARCameraNotAvailableException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +78,9 @@ public class HelloAr2Activity extends AppCompatActivity {
 
     public ARSession session;
     private ARConfigBase mArConfig;
+
+    private static String ServerIp = Constants.udpServerIp;
+    private static final int ServerPort = 8002;
 
     // ########## Begin Mediapipe ##########
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
@@ -122,6 +130,7 @@ public class HelloAr2Activity extends AppCompatActivity {
         setContentView(R.layout.activity_main2);
         surfaceView = findViewById(R.id.surfaceview);
         displayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
+        AudioRecordUtil.getInstance().start();
 
         // ########## Begin Mediapipe ##########
         previewDisplayView = new SurfaceView(this);
@@ -158,8 +167,11 @@ public class HelloAr2Activity extends AppCompatActivity {
                     try {
                         LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         JSONObject landmarks_json_object = getLandmarksJsonObject(multiFaceLandmarks, "pose");
-                        Log.d("pose", String.valueOf(landmarks_json_object));
+                        //Log.d("pose", String.valueOf(landmarks_json_object));
+                        send_UDP(landmarks_json_object);
                     } catch (InvalidProtocolBufferException | JSONException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                 });
@@ -385,6 +397,11 @@ public class HelloAr2Activity extends AppCompatActivity {
         return landmarks_json_object;
     }
     // ########## End Mediapipe ##########
-
+    private void send_UDP(JSONObject data) throws IOException {
+        DatagramPacket packet = new DatagramPacket(data.toString().getBytes(), data.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
+        DatagramSocket socket = new DatagramSocket();
+        socket.send(packet);
+        Log.d("send--body", String.valueOf(data));
+    }
 }
 
