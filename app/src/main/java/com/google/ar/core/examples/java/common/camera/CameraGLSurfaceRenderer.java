@@ -234,8 +234,9 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                 }
 
 
-                //Log.d(TAG, "onDrawFrame: ************ " + Arrays.toString(camera.getImageIntrinsics().getFocalLength()));
-                //Log.d(TAG, "onDrawFrame: ************ " + Arrays.toString(camera.getTextureIntrinsics().getFocalLength()));
+                // Visualize tracked points.   Visualize planes.
+             /*   camera.getProjectionMatrix(projmtx, 0, 0.1f, 100.0f);
+                mainActivity.planeRenderer.drawPlanes(mainActivity.session.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);*/
 
                 // Draw background.
                 drawFrameBuffer();
@@ -247,9 +248,6 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                 }
 
 
-                // Visualize tracked points.   Visualize planes.
-            /*    camera.getProjectionMatrix(projmtx, 0, 0.1f, 100.0f);
-                mainActivity.planeRenderer.drawPlanes(mainActivity.session.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);*/
 
 
             }
