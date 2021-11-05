@@ -49,10 +49,35 @@
     </activity>
 
 
-    <activity
-        android:name="com.google.ar.core.examples.java.helloar.HelloArActivity">
-    </activity>
     <!-- Indicates whether "Google Play Services for AR" (ARCore) is "required" or "optional". -->
     <meta-data android:name="com.google.ar.core" android:value="required" />
+
+    <meta-data
+        android:name="cameraFacingFront"
+        android:value="false" />
+    <meta-data
+        android:name="binaryGraphName"
+        android:value="holistic_tracking_gpu.binarypb" />
+    <meta-data
+        android:name="inputVideoStreamName"
+        android:value="input_video" />
+    <meta-data
+        android:name="outputVideoStreamName"
+        android:value="output_video" />
+    <meta-data
+        android:name="poseLandmarks"
+        android:value="pose_landmarks" />
+    <meta-data
+        android:name="flipFramesVertically"
+        android:value="true" />
+    <meta-data
+        android:name="converterNumBuffers"
+        android:value="3" />
+
   </application>
+
+
+  <uses-permission android:name="android.permission.INTERNET"></uses-permission>
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 </manifest>

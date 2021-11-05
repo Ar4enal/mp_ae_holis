@@ -25,7 +25,7 @@ import android.hardware.display.DisplayManager.DisplayListener;
 import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
-import com.google.ar.core.Session;
+import com.huawei.hiar.ARSession;
 
 /**
  * Helper to track the display rotations. In particular, the 180 degree rotations are not notified
@@ -52,19 +52,19 @@ public final class DisplayRotationHelper implements DisplayListener {
     display = windowManager.getDefaultDisplay();
   }
 
-  /** Registers the display listener. Should be called from {@link Activity#onResume()}. */
+  /** Registers the display listener. Should be called from {@link Activity#()}. */
   public void onResume() {
     displayManager.registerDisplayListener(this, null);
   }
 
-  /** Unregisters the display listener. Should be called from {@link Activity#onPause()}. */
+  /** Unregisters the display listener. Should be called from {@link Activity#()}. */
   public void onPause() {
     displayManager.unregisterDisplayListener(this);
   }
 
   /**
    * Records a change in surface dimensions. This will be later used by {@link
-   * #updateSessionIfNeeded(Session)}. Should be called from {@link
+   * #()}. Should be called from {@link
    * android.opengl.GLSurfaceView.Renderer
    * #onSurfaceChanged(javax.microedition.khronos.opengles.GL10, int, int)}.
    *
@@ -80,12 +80,12 @@ public final class DisplayRotationHelper implements DisplayListener {
   /**
    * Updates the session display geometry if a change was posted either by {@link
    * #onSurfaceChanged(int, int)} call or by {@link #onDisplayChanged(int)} system callback. This
-   * function should be called explicitly before each call to {@link Session#update()}. This
+   * function should be called explicitly before each call to {@link}. This
    * function will also clear the 'pending update' (viewportChanged) flag.
    *
-   * @param session the {@link Session} object to update if display geometry changed.
+   * @param session the {@link } object to update if display geometry changed.
    */
-  public void updateSessionIfNeeded(Session session) {
+  public void updateSessionIfNeeded(ARSession session) {
     if (viewportChanged) {
       int displayRotation = display.getRotation();
       session.setDisplayGeometry(displayRotation, viewportWidth, viewportHeight);

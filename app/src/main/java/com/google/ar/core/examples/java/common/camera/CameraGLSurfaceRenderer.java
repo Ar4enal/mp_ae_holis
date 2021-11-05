@@ -1,5 +1,6 @@
 package com.google.ar.core.examples.java.common.camera;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
@@ -13,24 +14,31 @@ import android.opengl.Matrix;
 import android.util.Log;
 import android.view.SurfaceHolder;
 
-import com.google.ar.core.Camera;
-import com.google.ar.core.Frame;
-import com.google.ar.core.Plane;
-import com.google.ar.core.TrackingState;
 import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
 import com.google.mediapipe.components.FrameProcessor;
 import com.google.mediapipe.glutil.ShaderUtil;
+import com.huawei.hiar.ARCamera;
+import com.huawei.hiar.ARFace;
+import com.huawei.hiar.ARFaceBlendShapes;
+import com.huawei.hiar.ARFrame;
+import com.huawei.hiar.ARTrackable;
+
+import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
+import java.util.Collection;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -60,16 +68,19 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     private static final int TEXTURE_COORDS_PER_VERTEX = 2;
     private static final int CPV = POSITION_COORDS_PER_VERTEX + TEXTURE_COORDS_PER_VERTEX;
     private static final int VERTEX_STRIDE_BYTES = CPV * BYTES_PER_FLOAT;
-    //    private final int COORDS_PER_VERTEX = 2;
-//    private final int vertexStride = COORDS_PER_VERTEX * 4; // 4 bytes per vertex
     private final short drawOrder[] = {0, 1, 2, 0, 2, 3}; // order to draw vertices
     private int mvpMatrixHandle;
     private final float[] displayMatrix = new float[16];
 
     BmpProducer bitmapProducer;
 
+    private FaceGeometryDisplay mFaceGeometryDisplay = new FaceGeometryDisplay();
+    private Context mContext;
+    private static String ServerIp = "192.168.0.1";
+    private static final int ServerPort = 8002;
 
-    public CameraGLSurfaceRenderer(HelloAr2Activity mainActivity) {
+    public CameraGLSurfaceRenderer(Context context, HelloAr2Activity mainActivity) {
+        mContext = context;
         this.mainActivity = mainActivity;
     }
 
@@ -119,20 +130,8 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         Log.d(TAG, "onSurfaceCreated: ");
         GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-        // Create the texture and pass it to ARCore session to be filled during update().
-        // backgroundRenderer.createOnGlThread(context);
-
-
-        // Prepare the other rendering objects.
-      /*  try {
-            mainActivity.planeRenderer.createOnGlThread(mainActivity, "models/trigrid.png");
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to read plane texture");
-        }*/
-
-        //mPointCloud.createOnGlThread(context);
         initTexture();
-
+        mFaceGeometryDisplay.init(mContext);
     }
 
     @Override
@@ -175,88 +174,39 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         try {
             if (mainActivity.session != null) {
                 // Obtain the current frame from ARSession. When the configuration is set to
-                Frame frame = mainActivity.session.update();
-                Camera camera = frame.getCamera();
-
-               /* if(bitmapProducer != null) {
-                    Image image = frame.acquireCameraImage();
-                    byte[] nv21;
-                    // Get the three planes.
-                    ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
-                    ByteBuffer uBuffer = image.getPlanes()[1].getBuffer();
-                    ByteBuffer vBuffer = image.getPlanes()[2].getBuffer();
-
-                    int ySize = yBuffer.remaining();
-                    int uSize = uBuffer.remaining();
-                    int vSize = vBuffer.remaining();
-                    //Log.d(TAG, "onDrawFrame: " + ySize + " " + uSize + " " + vSize);
-
-                    nv21 = new byte[ySize + uSize + vSize];
-
-                    //U and V are swapped
-                    yBuffer.get(nv21, 0, ySize);
-                    vBuffer.get(nv21, ySize, vSize);
-                    uBuffer.get(nv21, ySize + vSize, uSize);
-
-                    int width = image.getWidth();
-                    int height = image.getHeight();
-
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    YuvImage yuv = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
-                    yuv.compressToJpeg(new Rect(0, 0, width, height), 100, out);
-                    byte[] byteArray = out.toByteArray();
-                    Bitmap bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
-
-                    android.graphics.Matrix mat = new android.graphics.Matrix();//旋转90度
-                    mat.postRotate(90);
-                    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), mat, true);
-
-                    bitmap = Bitmap.createScaledBitmap(bitmap, 720, 1280, true);//好像要缩放到这个尺寸送进去计算的距离才正常
-                    Log.d(TAG, "onDrawFrame: " + bitmap.getWidth() + " " + bitmap.getHeight());
-
-                    bitmapProducer.setBitmapData(bitmap);
-
-                    //bitmap.recycle();
-                    image.close();
-
-
-                    if (Constants.intrinsicsFocalLength == 0) {
-                        Constants.intrinsicsFocalLength = camera.getTextureIntrinsics().getFocalLength()[0];
-                        Constants.imageWidth = bitmap.getWidth();
-                        Constants.imageHeight = bitmap.getHeight();
-                        Log.d(TAG, "Constants change intrinsicsFocalLength " + Constants.intrinsicsFocalLength + " size " + Constants.imageWidth + " " + Constants.imageHeight);
-                    }
-                }*/
-
-                if (Constants.intrinsicsFocalLength == 0) {
-                    Constants.intrinsicsFocalLength = camera.getTextureIntrinsics().getFocalLength()[0];
-                    Log.d(TAG, "Constants change intrinsicsFocalLength " + Constants.intrinsicsFocalLength );
-                }
-
-
-                // Visualize tracked points.   Visualize planes.
-             /*   camera.getProjectionMatrix(projmtx, 0, 0.1f, 100.0f);
-                mainActivity.planeRenderer.drawPlanes(mainActivity.session.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);*/
-
+                ARFrame frame = mainActivity.session.update();
+                ARCamera camera = frame.getCamera();
+                Collection<ARFace> faces = mainActivity.session.getAllTrackables(ARFace.class);
+                Log.d(TAG, "Face number: " + faces.size());
                 // Draw background.
                 drawFrameBuffer();
                 draw(mOffscreenTexture);
-
-                // If not tracking, don't draw 3d objects. 如果获取的camera状态不对，不绘制3D 物体，需要注释
-                if (camera.getTrackingState() == TrackingState.PAUSED) {
-                    return;
+                for (ARFace face : faces) {
+                    if (face.getTrackingState() == ARTrackable.TrackingState.TRACKING){
+                        mFaceGeometryDisplay.onDrawFrame(camera, face);
+                        ARFaceBlendShapes blendShapes = face.getFaceBlendShapes();
+                        JSONObject faceBlendShapes = new JSONObject(blendShapes.getBlendShapeDataMapKeyString());
+                        faceBlendShapes.put("qx", face.getPose().qx());
+                        faceBlendShapes.put("qy", face.getPose().qy());
+                        faceBlendShapes.put("qz", face.getPose().qz());
+                        faceBlendShapes.put("qw", face.getPose().qw());
+                        send_UDP(faceBlendShapes);
+                    }
                 }
-
-
-
 
             }
 
-            //Log.d(TAG, "camera pose matrix2: " + " " + mTranslation[0] + " " + mTranslation[1] + " " + mTranslation[2] + "   " + finalQuaternion.ToEulerAngles().pitch*57.29578 + " " + finalQuaternion.ToEulerAngles().yaw*57.29578 + " " + finalQuaternion.ToEulerAngles().roll*57.29578);
-        } catch (Throwable t) {
+            } catch (Throwable t) {
             // Avoid crashing the application due to unhandled exceptions.
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
+    }
+
+    private void send_UDP(JSONObject data) throws IOException {
+        DatagramPacket packet = new DatagramPacket(data.toString().getBytes(), data.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
+        DatagramSocket socket = new DatagramSocket();
+        socket.send(packet);
+        Log.d("send--face", String.valueOf(data));
     }
 
     private void initTexture() {

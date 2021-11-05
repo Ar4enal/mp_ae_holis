@@ -4,6 +4,9 @@ buildscript {
     repositories {
         google()
         jcenter()
+        maven {
+            url "http://developer.huawei.com/repo/"
+        }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:4.1.2'
@@ -17,6 +20,9 @@ allprojects {
         google()
         jcenter()
         mavenLocal()
+        maven {
+            url "http://developer.huawei.com/repo/"
+        }
     }
 }
 
