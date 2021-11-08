@@ -449,4 +449,8 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         //ShaderUtil.checkGlError("texture setup");
         return textureName[0];
     }
+
+    public void setServerIp(String ip) {
+        ServerIp = ip;
+    }
 }

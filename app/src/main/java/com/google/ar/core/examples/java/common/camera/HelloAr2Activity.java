@@ -16,6 +16,7 @@
 
 package com.google.ar.core.examples.java.common.camera;
 
+import android.content.DialogInterface;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.SurfaceTexture;
@@ -27,8 +28,11 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
@@ -74,7 +78,7 @@ import java.util.Map;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3D model.
  */
-public class HelloAr2Activity extends AppCompatActivity {
+public class HelloAr2Activity extends AppCompatActivity implements View.OnClickListener{
 
     public ARSession session;
     private ARConfigBase mArConfig;
@@ -82,6 +86,7 @@ public class HelloAr2Activity extends AppCompatActivity {
     private static String ServerIp = Constants.udpServerIp;
     private static final int ServerPort = 8002;
 
+    private Button enter_ip;
     // ########## Begin Mediapipe ##########
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
 
@@ -129,6 +134,7 @@ public class HelloAr2Activity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
         surfaceView = findViewById(R.id.surfaceview);
+        bindView();
         displayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
         AudioRecordUtil.getInstance().start();
 
@@ -402,6 +408,46 @@ public class HelloAr2Activity extends AppCompatActivity {
         DatagramSocket socket = new DatagramSocket();
         socket.send(packet);
         Log.d("send--body", String.valueOf(data));
+    }
+
+    private void setServerIp(String ip){
+        ServerIp = ip;
+    }
+
+    private void bindView(){
+        enter_ip = (Button) findViewById(R.id.enter_ip);
+        enter_ip.setOnClickListener(this);
+    }
+
+    @Override
+    public void onClick(View v) {
+        if (v.getId() == R.id.enter_ip){
+            AlertDialog.Builder dialog = new AlertDialog.Builder(HelloAr2Activity.this);
+            dialog.setTitle("Please enter UDP server IP address");
+            final View view = View.inflate(HelloAr2Activity.this, R.layout.udpserver_ip, null);
+            EditText et = view.findViewById(R.id.server_ip);
+            dialog.setView(view);
+            dialog.setPositiveButton("confirm", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    String ip = et.getText().toString();
+                    Toast.makeText(HelloAr2Activity.this, "UDP server ip:" + ip, Toast.LENGTH_SHORT).show();
+                    //serveraddress = ip;
+                    AudioRecordUtil.getInstance().setServerIp(ip);
+                    glSurfaceRenderer.setServerIp(ip);
+                    setServerIp(ip);
+                    dialogInterface.cancel();
+                }
+            });
+
+            dialog.setNegativeButton("cancel", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    dialogInterface.cancel();
+                }
+            });
+            dialog.show();
+        }
     }
 }
 
