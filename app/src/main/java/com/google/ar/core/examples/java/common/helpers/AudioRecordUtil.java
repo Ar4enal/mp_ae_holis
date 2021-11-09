@@ -22,7 +22,7 @@ public class AudioRecordUtil {
     private final int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
 
     private static String ServerIp = Constants.udpServerIp;
-    private static final int ServerPort = 8001;
+    private static final int ServerPort = Constants.audioServerPort;
 
     private AudioTrack mTrack;
     //录制状态

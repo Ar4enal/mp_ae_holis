@@ -77,7 +77,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     private FaceGeometryDisplay mFaceGeometryDisplay = new FaceGeometryDisplay();
     private Context mContext;
     private static String ServerIp = Constants.udpServerIp;
-    private static final int ServerPort = 8002;
+    private static final int ServerPort = Constants.blend_shapeServerPort;
 
     public CameraGLSurfaceRenderer(Context context, HelloAr2Activity mainActivity) {
         mContext = context;
@@ -230,9 +230,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         vertShader = IVCGLLib.loadFromAssetsFile("IVC_VShader_Preview.sh", mainActivity.getResources());
         fragShader_Pre = IVCGLLib.loadFromAssetsFile("IVC_FShader_Camera.sh", mainActivity.getResources());
         programHandle = IVCGLLib.glCreateProgram(vertShader, fragShader_Pre);
-        // IVCGLLib.glCheckGlError("glCreateProgram");
         mvpMatrixHandle = GLES20.glGetUniformLocation(programHandle, "uMVPMatrix");
-        // IVCGLLib.glCheckGlError("glGetUniformLocation");
         mPositionHandle = GLES20.glGetAttribLocation(programHandle, "position");
         mTextureCoordHandle = GLES20.glGetAttribLocation(programHandle, "inputTextureCoordinate");
     }

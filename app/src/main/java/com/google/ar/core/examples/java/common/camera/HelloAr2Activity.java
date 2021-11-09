@@ -84,7 +84,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     private ARConfigBase mArConfig;
 
     private static String ServerIp = Constants.udpServerIp;
-    private static final int ServerPort = 8002;
+    private static final int ServerPort = Constants.body_poseServerPort;
 
     private Button enter_ip;
     // ########## Begin Mediapipe ##########
@@ -342,11 +342,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 list.add(String.format("%.8f", landmark.getX()));
                 list.add(String.format("%.8f", landmark.getY()));
                 list.add(String.format("%.8f", landmark.getZ()));
-
-                /*JSONObject landmarks_json_object_part = new JSONObject();
-                landmarks_json_object_part.put("X", landmark.getX());
-                landmarks_json_object_part.put("Y", landmark.getY());
-                landmarks_json_object_part.put("Z", landmark.getZ());*/
                 String tag = "face_landmark[" + landmarkIndex + "]";
                 landmarks_json_object.put(tag, list);
                 ++landmarkIndex;
@@ -359,10 +354,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 list.add(String.format("%.8f", landmark.getX()));
                 list.add(String.format("%.8f", landmark.getY()));
                 list.add(String.format("%.8f", landmark.getZ()));
-                /*JSONObject landmarks_json_object_part = new JSONObject();
-                landmarks_json_object_part.put("X", landmark.getX());
-                landmarks_json_object_part.put("Y", landmark.getY());
-                landmarks_json_object_part.put("Z", landmark.getZ());*/
                 String tag = "right_hand_landmark[" + rlandmarkIndex + "]";
                 landmarks_json_object.put(tag, list);
                 ++rlandmarkIndex;
@@ -375,10 +366,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 list.add(String.format("%.8f", landmark.getX()));
                 list.add(String.format("%.8f", landmark.getY()));
                 list.add(String.format("%.8f", landmark.getZ()));
-                    /*JSONObject landmarks_json_object_part = new JSONObject();
-                    landmarks_json_object_part.put("X", landmark.getX());
-                    landmarks_json_object_part.put("Y", landmark.getY());
-                    landmarks_json_object_part.put("Z", landmark.getZ());*/
                 String tag = "left_hand_landmark[" + llandmarkIndex + "]";
                 landmarks_json_object.put(tag, list);
                 ++llandmarkIndex;
@@ -391,10 +378,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 list.add(String.format("%.8f", landmark.getX()));
                 list.add(String.format("%.8f", landmark.getY()));
                 list.add(String.format("%.8f", landmark.getZ()));
-                /*JSONObject landmarks_json_object_part = new JSONObject();
-                landmarks_json_object_part.put("X", landmark.getX());
-                landmarks_json_object_part.put("Y", landmark.getY());
-                landmarks_json_object_part.put("Z", landmark.getZ());*/
                 String tag = "pose_landmark[" + plandmarkIndex + "]";
                 landmarks_json_object.put(tag, list);
                 ++plandmarkIndex;
