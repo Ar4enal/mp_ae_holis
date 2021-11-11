@@ -34,7 +34,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.ar.core.examples.java.common.Constants;
+import com.google.ar.core.examples.java.common.PoseLandmark;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
@@ -172,9 +176,10 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                     Log.d(TAG, "Received pose landmarks packet.");
                     try {
                         LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
-                        JSONObject landmarks_json_object = getLandmarksJsonObject(multiFaceLandmarks, "pose");
-                        //Log.d("pose", String.valueOf(landmarks_json_object));
-                        send_UDP(landmarks_json_object);
+                        //JSONObject landmarks_json_object = getLandmarksJsonObject(multiFaceLandmarks, "pose");
+                        String landmarks_list = getLandmarksListObject(multiFaceLandmarks, "pose");
+                        //Log.d(TAG, landmarks_list);
+                        send_UDP(landmarks_list);
                     } catch (InvalidProtocolBufferException | JSONException e) {
                         e.printStackTrace();
                     } catch (IOException e) {
@@ -385,13 +390,62 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         }
         return landmarks_json_object;
     }
+
+/*    private static List<Float> getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location){
+        List<Float> result_landmarks = new ArrayList<Float>();
+        if (location == "pose"){
+            int plandmarkIndex = 0;
+            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
+                if (plandmarkIndex > 10 && plandmarkIndex < 25){
+                    result_landmarks.add(landmark.getVisibility());
+                    result_landmarks.add(landmark.getX());
+                    result_landmarks.add(landmark.getY());
+                    result_landmarks.add(landmark.getZ());
+                }
+                ++plandmarkIndex;
+            }
+        }
+        return result_landmarks;
+    }*/
+
+    private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
+        //JSONObject result_landmarks = new JSONObject();
+        List<PoseLandmark> result_landmarks = new ArrayList<PoseLandmark>();
+        ObjectMapper mapper = new ObjectMapper();
+        if (location == "pose"){
+            int plandmarkIndex = 0;
+            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
+                if (plandmarkIndex > 10 && plandmarkIndex < 25){
+                    PoseLandmark current_landmarks = new PoseLandmark();
+                    current_landmarks.setIndex(plandmarkIndex);
+                    current_landmarks.setScore(landmark.getVisibility());
+                    current_landmarks.setX(landmark.getX());
+                    current_landmarks.setY(landmark.getY());
+                    current_landmarks.setZ(landmark.getZ());
+                    result_landmarks.add(current_landmarks);
+                }
+                ++plandmarkIndex;
+            }
+        }
+        String jsonList = mapper.writeValueAsString(result_landmarks);
+        return jsonList;
+    }
+
     // ########## End Mediapipe ##########
-    private void send_UDP(JSONObject data) throws IOException {
-        DatagramPacket packet = new DatagramPacket(data.toString().getBytes(), data.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
+    private void send_UDP(String data) throws IOException {
+        DatagramPacket packet = new DatagramPacket(data.getBytes(), data.getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
         DatagramSocket socket = new DatagramSocket();
         socket.send(packet);
         Log.d("send--body", String.valueOf(data));
     }
+/*    private void send_UDP(List<Float> list) throws IOException {
+        DatagramPacket packet = new DatagramPacket(list.toString().getBytes(), list.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
+        DatagramSocket socket = new DatagramSocket();
+        socket.send(packet);
+        //Log.d("body", String.valueOf(list.size()));
+        Log.d("send--body", String.valueOf(list));
+    }*/
+
 
     private void setServerIp(String ip){
         ServerIp = ip;
