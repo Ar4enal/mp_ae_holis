@@ -19,6 +19,7 @@ package com.google.ar.core.examples.java.common.camera;
 import android.content.DialogInterface;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.MaskFilter;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
 import android.opengl.GLSurfaceView;
@@ -91,6 +92,13 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     private static final int ServerPort = Constants.body_poseServerPort;
 
     private Button enter_ip;
+
+/*    private static float p1x;
+    private static float p1y;
+    private static float p2x;
+    private static float p2y;
+    private static float p3x;
+    private static float p3y;*/
     // ########## Begin Mediapipe ##########
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
 
@@ -178,7 +186,9 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                         LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         //JSONObject landmarks_json_object = getLandmarksJsonObject(multiFaceLandmarks, "pose");
                         String landmarks_list = getLandmarksListObject(multiFaceLandmarks, "pose");
-                        //Log.d(TAG, landmarks_list);
+                        /*int d = getDegree(p1x,p1y,p2x,p2y,p3x,p3y);
+                        Log.d("degree", String.valueOf(d));
+                        Log.d(TAG, landmarks_list);*/
                         send_UDP(landmarks_list);
                     } catch (InvalidProtocolBufferException | JSONException e) {
                         e.printStackTrace();
@@ -423,6 +433,18 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                     current_landmarks.setY(landmark.getY());
                     current_landmarks.setZ(landmark.getZ());
                     result_landmarks.add(current_landmarks);
+                    /*if(plandmarkIndex == 11){
+                        p1x = landmark.getX();
+                        p1y = landmark.getY();
+                    }
+                    else if (plandmarkIndex == 13){
+                        p2x = landmark.getX();
+                        p2y = landmark.getY();
+                    }
+                    else if (plandmarkIndex == 23){
+                        p3x = landmark.getX();
+                        p3y = landmark.getY();
+                    }*/
                 }
                 ++plandmarkIndex;
             }
@@ -431,12 +453,24 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         return jsonList;
     }
 
+    private int getDegree(float p1x, float p1y, float p2x, float p2y, float p3x, float p3y){
+        float vector = (p2x-p1x)*(p3x-p1x) + (p2y-p1y)*(p3y-p1y);
+        double sqrt = Math.sqrt(
+                (Math.abs((p2x-p1x)*(p2x-p1x)) + Math.abs((p2y-p1y)*(p2y-p1y)))   *
+                        (Math.abs((p3x-p1x)*(p3x-p1x)) + Math.abs((p3y-p1y)*(p3y-p1y)))
+        );
+
+        double radian = Math.acos(vector/sqrt);
+        return (int) (180*radian/ Math.PI);
+    }
+
     // ########## End Mediapipe ##########
     private void send_UDP(String data) throws IOException {
         DatagramPacket packet = new DatagramPacket(data.getBytes(), data.getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
         DatagramSocket socket = new DatagramSocket();
         socket.send(packet);
-        Log.d("send--body", String.valueOf(data));
+        Log.d("send--body", data);
+        //Log.d("packet-length", String.valueOf(packet.getLength()));
     }
 /*    private void send_UDP(List<Float> list) throws IOException {
         DatagramPacket packet = new DatagramPacket(list.toString().getBytes(), list.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);

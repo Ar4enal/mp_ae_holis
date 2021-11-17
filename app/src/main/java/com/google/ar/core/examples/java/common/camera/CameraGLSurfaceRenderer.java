@@ -161,6 +161,9 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         viewWidth = width;
         viewHeight = height;
 
+        Constants.mediapipeWidth = width;
+        Constants.mediapipeHeight = height;
+
         mTexture = createVideoTexture();
 
         createFBO();
@@ -190,6 +193,8 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                 // Obtain the current frame from ARSession. When the configuration is set to
                 ARFrame frame = mainActivity.session.update();
                 ARCamera camera = frame.getCamera();
+                //Log.d(TAG, "onDrawFrame: width"+camera.getCameraImageIntrinsics().getImageDimensions()[0]+" "+camera.getCameraImageIntrinsics().getImageDimensions()[1]);
+
                 Collection<ARFace> faces = mainActivity.session.getAllTrackables(ARFace.class);
                 Log.d(TAG, "Face number: " + faces.size());
                 // Draw background.
@@ -221,6 +226,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         DatagramSocket socket = new DatagramSocket();
         socket.send(packet);
         Log.d("send--face", String.valueOf(data));
+        //Log.d("packet-length", String.valueOf(data.length()));
     }
 
     private void initTexture() {
