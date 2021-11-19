@@ -17,4 +17,14 @@ public class Constants {
     public static int audioServerPort = 8001;
     public static int blend_shapeServerPort = 8002;
     public static int body_poseServerPort = 8003;
+
+    public static String WebRTCServerIp = "http://192.168.1.127:8888";
+
+    public static String cameraFacingFront = "false";
+    public static String binaryGraphName = "holistic_tracking_gpu.binarypb";
+    public static String inputVideoStreamName = "input_video";
+    public static String outputVideoStreamName = "output_video";
+    public static String poseLandmarks = "pose_landmarks";
+    public static String flipFramesVertically = "true";
+    public static String converterNumBuffers = "3";
 }

@@ -53,31 +53,6 @@
     <!-- Indicates whether "Google Play Services for AR" (ARCore) is "required" or "optional". -->
     <meta-data android:name="com.google.ar.core" android:value="required" />
 
-    <meta-data
-        android:name="cameraFacingFront"
-        android:value="false" />
-    <meta-data
-        android:name="binaryGraphName"
-        android:value="holistic_tracking_gpu.binarypb" />
-    <meta-data
-        android:name="inputVideoStreamName"
-        android:value="input_video" />
-    <meta-data
-        android:name="outputVideoStreamName"
-        android:value="output_video" />
-    <meta-data
-        android:name="poseLandmarks"
-        android:value="pose_landmarks" />
-    <meta-data
-        android:name="flipFramesVertically"
-        android:value="true" />
-    <meta-data
-        android:name="converterNumBuffers"
-        android:value="3" />
-    <meta-data
-        android:name="udpServerIp"
-        android:value="192.168.0.1" />
-
   </application>
 
 

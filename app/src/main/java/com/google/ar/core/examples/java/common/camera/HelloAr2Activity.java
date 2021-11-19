@@ -17,7 +17,6 @@
 package com.google.ar.core.examples.java.common.camera;
 
 import android.content.DialogInterface;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.MaskFilter;
 import android.graphics.SurfaceTexture;
@@ -48,6 +47,9 @@ import com.google.ar.core.examples.java.common.helpers.CameraPermissionHelper;
 import com.google.ar.core.examples.java.common.helpers.DisplayRotationHelper;
 import com.google.ar.core.examples.java.common.helpers.FullScreenHelper;
 import com.google.ar.core.examples.java.common.helpers.SnackbarHelper;
+import com.google.ar.core.examples.java.common.webrtc.PeerConnectionAdapter;
+import com.google.ar.core.examples.java.common.webrtc.SdpAdapter;
+import com.google.ar.core.examples.java.common.webrtc.SignalingClient;
 import com.google.ar.core.examples.java.helloar.R;
 import com.google.mediapipe.components.CameraHelper;
 import com.google.mediapipe.components.FrameProcessor;
@@ -68,6 +70,21 @@ import com.huawei.hiar.exceptions.ARCameraNotAvailableException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.webrtc.AudioSource;
+import org.webrtc.AudioTrack;
+import org.webrtc.Camera1Enumerator;
+import org.webrtc.DefaultVideoDecoderFactory;
+import org.webrtc.DefaultVideoEncoderFactory;
+import org.webrtc.EglBase;
+import org.webrtc.IceCandidate;
+import org.webrtc.MediaConstraints;
+import org.webrtc.MediaStream;
+import org.webrtc.PeerConnection;
+import org.webrtc.PeerConnectionFactory;
+import org.webrtc.SessionDescription;
+import org.webrtc.VideoCapturer;
+import org.webrtc.VideoSource;
+import org.webrtc.VideoTrack;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -83,7 +100,7 @@ import java.util.Map;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3D model.
  */
-public class HelloAr2Activity extends AppCompatActivity implements View.OnClickListener{
+public class HelloAr2Activity extends AppCompatActivity implements View.OnClickListener, SignalingClient.Callback{
 
     public ARSession session;
     private ARConfigBase mArConfig;
@@ -125,6 +142,9 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
     BmpProducer bitmapProducer;
     // ########## End Mediapipe ##########
+    PeerConnectionFactory peerConnectionFactory;
+    PeerConnection peerConnection;
+    MediaStream mediaStream;
 
     private static final String TAG = HelloAr2Activity.class.getSimpleName();
 
@@ -137,10 +157,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
     private CameraGLSurfaceRenderer glSurfaceRenderer = null;
 
-
-    // ApplicationInfo for retrieving metadata defined in the manifest.
-    private ApplicationInfo applicationInfo;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -148,7 +164,40 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         surfaceView = findViewById(R.id.surfaceview);
         bindView();
         displayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
-        AudioRecordUtil.getInstance().start();
+        //AudioRecordUtil.getInstance().start();
+
+        EglBase.Context eglBaseContext = EglBase.create().getEglBaseContext();
+
+        // create PeerConnectionFactory
+        PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions
+                .builder(this)
+                .createInitializationOptions());
+        PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
+        DefaultVideoEncoderFactory defaultVideoEncoderFactory =
+                new DefaultVideoEncoderFactory(eglBaseContext, true, true);
+        DefaultVideoDecoderFactory defaultVideoDecoderFactory =
+                new DefaultVideoDecoderFactory(eglBaseContext);
+        peerConnectionFactory = PeerConnectionFactory.builder()
+                .setOptions(options)
+                .setVideoEncoderFactory(defaultVideoEncoderFactory)
+                .setVideoDecoderFactory(defaultVideoDecoderFactory)
+                .createPeerConnectionFactory();
+
+        // create VideoCapturer
+        VideoCapturer videoCapturer = createCameraCapturer(true);
+        VideoSource videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
+        // create VideoTrack
+        VideoTrack videoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
+
+        AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
+        AudioTrack audioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
+
+        mediaStream = peerConnectionFactory.createLocalMediaStream("mediaStream");
+        mediaStream.addTrack(videoTrack);
+        mediaStream.addTrack(audioTrack);
+
+        SignalingClient.get().setCallback(this);
+        call();
 
         // ########## Begin Mediapipe ##########
         previewDisplayView = new SurfaceView(this);
@@ -158,27 +207,20 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         // binary graphs.
         AndroidAssetUtil.initializeNativeAssetManager(this);
 
-        try {
-            applicationInfo =
-                    getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.e(TAG, "Cannot find application info: " + e);
-        }
-
         Log.i("eglGetCurrentContext-onCreate", EGL14.eglGetCurrentContext().toString());
         eglManager = new EglManager(null);
         processor = new FrameProcessor(
                 this,
                 eglManager.getNativeContext(),
-                applicationInfo.metaData.getString("binaryGraphName"),
-                applicationInfo.metaData.getString("inputVideoStreamName"),
-                applicationInfo.metaData.getString("outputVideoStreamName"));
-        processor.getVideoSurfaceOutput().setFlipY( applicationInfo.metaData.getBoolean("flipFramesVertically", FLIP_FRAMES_VERTICALLY));
+                Constants.binaryGraphName,
+                Constants.inputVideoStreamName,
+                Constants.outputVideoStreamName);
+        processor.getVideoSurfaceOutput().setFlipY(FLIP_FRAMES_VERTICALLY);
 
         PermissionHelper.checkAndRequestCameraPermissions(this);
 
         processor.addPacketCallback(
-                applicationInfo.metaData.getString("poseLandmarks"),
+                Constants.poseLandmarks,
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     Log.d(TAG, "Received pose landmarks packet.");
@@ -211,6 +253,47 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
     }
 
+    private VideoCapturer createCameraCapturer(boolean isFront) {
+        Camera1Enumerator enumerator = new Camera1Enumerator(false);
+        final String[] deviceNames = enumerator.getDeviceNames();
+
+        // First, try to find front facing camera
+        for (String deviceName : deviceNames) {
+            if (isFront ? enumerator.isFrontFacing(deviceName) : enumerator.isBackFacing(deviceName)) {
+                VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
+
+                if (videoCapturer != null) {
+                    return videoCapturer;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void call() {
+        List<PeerConnection.IceServer> iceServers = new ArrayList<>();
+        iceServers.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
+        peerConnection = peerConnectionFactory.createPeerConnection(iceServers, new PeerConnectionAdapter("localconnection") {
+            @Override
+            public void onIceCandidate(IceCandidate iceCandidate) {
+                super.onIceCandidate(iceCandidate);
+                SignalingClient.get().sendIceCandidate(iceCandidate);
+            }
+
+/*            @Override
+            public void onAddStream(MediaStream mediaStream) {
+                super.onAddStream(mediaStream);
+                VideoTrack remoteVideoTrack = mediaStream.videoTracks.get(0);
+                runOnUiThread(() -> {
+                    remoteVideoTrack.addSink(remoteView);
+                });
+            }*/
+        });
+
+        peerConnection.addStream(mediaStream);
+    }
+
 
     @Override
     protected void onDestroy() {
@@ -221,6 +304,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
         super.onDestroy();
         Log.d(TAG, "onDestroy: ");
+        SignalingClient.get().sendSignOut();
     }
 
     @Override
@@ -519,6 +603,78 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
             });
             dialog.show();
         }
+    }
+
+    @Override
+    public void onCreateRoom() {
+
+    }
+
+    @Override
+    public void onPeerJoined() {
+
+    }
+
+    @Override
+    public void onSelfJoined() {
+        peerConnection.createOffer(new SdpAdapter("local offer sdp") {
+            @Override
+            public void onCreateSuccess(SessionDescription sessionDescription) {
+                super.onCreateSuccess(sessionDescription);
+                peerConnection.setLocalDescription(new SdpAdapter("local set local"), sessionDescription);
+                try {
+                    SignalingClient.get().sendOfferSessionDescription(sessionDescription);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, new MediaConstraints());
+    }
+
+    @Override
+    public void onPeerLeave(String msg) {
+
+    }
+
+    @Override
+    public void onSelfLeave() {
+        SignalingClient.get().sendSignOut();
+    }
+
+    @Override
+    public void onOfferReceived(JSONObject data) {
+        runOnUiThread(() -> {
+            peerConnection.setRemoteDescription(new SdpAdapter("localSetRemote"),
+                    new SessionDescription(SessionDescription.Type.OFFER, data.optString("sdp")));
+            peerConnection.createAnswer(new SdpAdapter("localAnswerSdp") {
+                @Override
+                public void onCreateSuccess(SessionDescription sdp) {
+                    super.onCreateSuccess(sdp);
+                    peerConnection.setLocalDescription(new SdpAdapter("localSetLocal"), sdp);
+                    try {
+                        SignalingClient.get().sendAnswerSessionDescription(sdp);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }, new MediaConstraints());
+
+        });
+    }
+
+    @Override
+    public void onAnswerReceived(JSONObject data) {
+        peerConnection.setRemoteDescription(new SdpAdapter("localSetRemote"),
+                new SessionDescription(SessionDescription.Type.ANSWER, data.optString("sdp")));
+    }
+
+    @Override
+    public void onIceCandidateReceived(JSONObject data) {
+        peerConnection.addIceCandidate(new IceCandidate(
+                data.optString("sdpMid"),
+                data.optInt("sdpMLineIndex"),
+                data.optString("candidate")
+        ));
     }
 }
 
