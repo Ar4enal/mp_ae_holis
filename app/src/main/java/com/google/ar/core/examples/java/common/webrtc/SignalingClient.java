@@ -3,7 +3,7 @@ package com.google.ar.core.examples.java.common.webrtc;
 import android.util.Log;
 
 import com.google.ar.core.examples.java.common.Constants;
-
+import com.google.ar.core.examples.java.common.Constants;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.IceCandidate;
@@ -96,7 +96,7 @@ public class SignalingClient {
                         if (cur[0].equals("mobile")){
                             localID = cur[1];
                         }
-                        else if (cur[0].equals("xlabs@DESKTOP-5VECIQN")){
+                        else if (cur[0].equals(Constants.peerName)){
                             peerID = cur[1];
                         }
                     }
@@ -186,13 +186,22 @@ public class SignalingClient {
                         result = response.body().string();
                         Log.d("http-wait-response", result);
                         try {
-                            JSONObject jsonObject = new JSONObject(result);
-                            //Log.d("http-wait-response-j", String.valueOf(jsonObject));
-                            if (jsonObject.has("candidate")){
-                                callback.onIceCandidateReceived(jsonObject);
+                            if (result.startsWith(Constants.peerName)){
+                                peerID = result.split(",")[1];
+                                sendWait(localID);
                             }
-                            else if (jsonObject.has("sdp")){
-                                callback.onAnswerReceived(jsonObject);
+                            else{
+                                JSONObject jsonObject = new JSONObject(result);
+                                //Log.d("http-wait-response-j", String.valueOf(jsonObject));
+                                if (jsonObject.has("candidate")){
+                                    callback.onIceCandidateReceived(jsonObject);
+                                }
+                                else if (jsonObject.getString("type").equals("answer")){
+                                    callback.onAnswerReceived(jsonObject);
+                                }
+                                else if (jsonObject.getString("type").equals("offer")){
+                                    callback.onOfferReceived(jsonObject);
+                                }
                             }
                         } catch (JSONException e) {
                             e.printStackTrace();

@@ -18,7 +18,8 @@ public class Constants {
     public static int blend_shapeServerPort = 8002;
     public static int body_poseServerPort = 8003;
 
-    public static String WebRTCServerIp = "http://192.168.1.127:8888";
+    public static String WebRTCServerIp = "http://192.168.1.106:8888";
+    public static String peerName = "xlabs@DESKTOP-5VECIQN";
 
     public static String cameraFacingFront = "false";
     public static String binaryGraphName = "holistic_tracking_gpu.binarypb";

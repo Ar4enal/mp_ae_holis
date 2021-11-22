@@ -533,11 +533,12 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 ++plandmarkIndex;
             }
         }
+
         String jsonList = mapper.writeValueAsString(result_landmarks);
         return jsonList;
     }
 
-    private int getDegree(float p1x, float p1y, float p2x, float p2y, float p3x, float p3y){
+/*    private int getDegree(float p1x, float p1y, float p2x, float p2y, float p3x, float p3y){
         float vector = (p2x-p1x)*(p3x-p1x) + (p2y-p1y)*(p3y-p1y);
         double sqrt = Math.sqrt(
                 (Math.abs((p2x-p1x)*(p2x-p1x)) + Math.abs((p2y-p1y)*(p2y-p1y)))   *
@@ -546,7 +547,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
         double radian = Math.acos(vector/sqrt);
         return (int) (180*radian/ Math.PI);
-    }
+    }*/
 
     // ########## End Mediapipe ##########
     private void send_UDP(String data) throws IOException {
