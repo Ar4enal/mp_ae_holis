@@ -17,8 +17,6 @@
 package com.google.ar.core.examples.java.common.camera;
 
 import android.content.DialogInterface;
-import android.content.pm.PackageManager;
-import android.graphics.MaskFilter;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
 import android.opengl.GLSurfaceView;
@@ -50,16 +48,12 @@ import com.google.ar.core.examples.java.common.helpers.SnackbarHelper;
 import com.google.ar.core.examples.java.common.webrtc.PeerConnectionAdapter;
 import com.google.ar.core.examples.java.common.webrtc.SdpAdapter;
 import com.google.ar.core.examples.java.common.webrtc.SignalingClient;
+import com.google.ar.core.examples.java.common.KalmanLowPassFilter;
 import com.google.ar.core.examples.java.helloar.R;
-import com.google.mediapipe.components.CameraHelper;
 import com.google.mediapipe.components.FrameProcessor;
 import com.google.mediapipe.components.PermissionHelper;
 import com.google.mediapipe.formats.proto.LandmarkProto;
-import com.google.mediapipe.formats.proto.LandmarkProto.NormalizedLandmark;
-import com.google.mediapipe.formats.proto.LandmarkProto.NormalizedLandmarkList;
 import com.google.mediapipe.framework.AndroidAssetUtil;
-import com.google.mediapipe.framework.AndroidPacketCreator;
-import com.google.mediapipe.framework.Packet;
 import com.google.mediapipe.framework.PacketGetter;
 import com.google.mediapipe.glutil.EglManager;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -91,9 +85,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * This is a simple example that shows how to create an augmented reality (AR) application using the
@@ -110,12 +102,11 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
     private Button enter_ip;
 
-/*    private static float p1x;
-    private static float p1y;
-    private static float p2x;
-    private static float p2y;
-    private static float p3x;
-    private static float p3y;*/
+    private static Float KalmanParamQ = 0.001f;
+    private static Float KalmanParamR = 0.0015f;
+    private static Float LowPassParam = 0.1f;
+    private static KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
+
     // ########## Begin Mediapipe ##########
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
 
@@ -226,11 +217,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                     Log.d(TAG, "Received pose landmarks packet.");
                     try {
                         LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
-                        //JSONObject landmarks_json_object = getLandmarksJsonObject(multiFaceLandmarks, "pose");
                         String landmarks_list = getLandmarksListObject(multiFaceLandmarks, "pose");
-                        /*int d = getDegree(p1x,p1y,p2x,p2y,p3x,p3y);
-                        Log.d("degree", String.valueOf(d));
-                        Log.d(TAG, landmarks_list);*/
                         send_UDP(landmarks_list);
                     } catch (InvalidProtocolBufferException | JSONException e) {
                         e.printStackTrace();
@@ -503,32 +490,20 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     }*/
 
     private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
-        //JSONObject result_landmarks = new JSONObject();
-        List<PoseLandmark> result_landmarks = new ArrayList<PoseLandmark>();
+        List<PoseLandmark> result_landmarks = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
         if (location == "pose"){
             int plandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                if (plandmarkIndex > 10 && plandmarkIndex < 25){
+                if (plandmarkIndex > Constants.minBodyIndex && plandmarkIndex < Constants.maxBodyIndex){
+                    kalmanUpdate(landmark, plandmarkIndex);
                     PoseLandmark current_landmarks = new PoseLandmark();
                     current_landmarks.setIndex(plandmarkIndex);
                     current_landmarks.setScore(landmark.getVisibility());
-                    current_landmarks.setX(landmark.getX());
-                    current_landmarks.setY(landmark.getY());
-                    current_landmarks.setZ(landmark.getZ());
+                    current_landmarks.setX(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[0]);
+                    current_landmarks.setY(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[1]);
+                    current_landmarks.setZ(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[2]);
                     result_landmarks.add(current_landmarks);
-                    /*if(plandmarkIndex == 11){
-                        p1x = landmark.getX();
-                        p1y = landmark.getY();
-                    }
-                    else if (plandmarkIndex == 13){
-                        p2x = landmark.getX();
-                        p2y = landmark.getY();
-                    }
-                    else if (plandmarkIndex == 23){
-                        p3x = landmark.getX();
-                        p3y = landmark.getY();
-                    }*/
                 }
                 ++plandmarkIndex;
             }
@@ -536,6 +511,46 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
         String jsonList = mapper.writeValueAsString(result_landmarks);
         return jsonList;
+    }
+
+    private static void kalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int plandmarkIndex){
+        kalmanLowPassFilter.setFilterHashMapNow3D(plandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
+        measurementUpdate(plandmarkIndex, kalmanLowPassFilter);
+        kalmanLowPassFilter.setFilterHashMapPos3D(plandmarkIndex,
+                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[0] + (kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Now3D[0] - kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[0]) * kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).K[0],
+                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[1] + (kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Now3D[1] - kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[1]) * kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).K[1],
+                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[2] + (kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Now3D[2] - kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[2]) * kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).K[2]
+                );
+        kalmanLowPassFilter.setX(plandmarkIndex,
+                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[0],
+                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[1],
+                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[2]
+                );
+        lowPassUpdate(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex));
+    }
+
+    private static void measurementUpdate(int plandmarkIndex, KalmanLowPassFilter measurement){
+        measurement.setK(plandmarkIndex,
+                (measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ)/(measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ + KalmanParamR),
+                (measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ)/(measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ + KalmanParamR),
+                (measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ)/(measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ + KalmanParamR)
+                );
+        measurement.setP(plandmarkIndex,
+                KalmanParamR * (measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ) / (KalmanParamR + measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ),
+                KalmanParamR * (measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ) / (KalmanParamR + measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ),
+                KalmanParamR * (measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ) / (KalmanParamR + measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ)
+                );
+    }
+
+    private static void lowPassUpdate(KalmanLowPassFilter.Filter jp){
+        jp.PrevPos3D[0] = jp.Pos3D;
+        for (int i = 1; i < jp.PrevPos3D.length; i++)
+        {
+            jp.PrevPos3D[i][0] = jp.PrevPos3D[i][0] * LowPassParam + jp.PrevPos3D[i - 1][0] * (1f - LowPassParam);
+            jp.PrevPos3D[i][1] = jp.PrevPos3D[i][1] * LowPassParam + jp.PrevPos3D[i - 1][1] * (1f - LowPassParam);
+            jp.PrevPos3D[i][2] = jp.PrevPos3D[i][2] * LowPassParam + jp.PrevPos3D[i - 1][2] * (1f - LowPassParam);
+        }
+        jp.Pos3D = jp.PrevPos3D[jp.PrevPos3D.length - 1];
     }
 
 /*    private int getDegree(float p1x, float p1y, float p2x, float p2y, float p3x, float p3y){
@@ -555,16 +570,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         DatagramSocket socket = new DatagramSocket();
         socket.send(packet);
         Log.d("send--body", data);
-        //Log.d("packet-length", String.valueOf(packet.getLength()));
     }
-/*    private void send_UDP(List<Float> list) throws IOException {
-        DatagramPacket packet = new DatagramPacket(list.toString().getBytes(), list.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
-        DatagramSocket socket = new DatagramSocket();
-        socket.send(packet);
-        //Log.d("body", String.valueOf(list.size()));
-        Log.d("send--body", String.valueOf(list));
-    }*/
-
 
     private void setServerIp(String ip){
         ServerIp = ip;
@@ -588,7 +594,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 public void onClick(DialogInterface dialogInterface, int i) {
                     String ip = et.getText().toString();
                     Toast.makeText(HelloAr2Activity.this, "UDP server ip:" + ip, Toast.LENGTH_SHORT).show();
-                    //serveraddress = ip;
                     AudioRecordUtil.getInstance().setServerIp(ip);
                     glSurfaceRenderer.setServerIp(ip);
                     setServerIp(ip);

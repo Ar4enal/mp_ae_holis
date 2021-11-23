@@ -100,7 +100,6 @@ public class SignalingClient {
                             peerID = cur[1];
                         }
                     }
-                    //sendWait(peerID);
                     sendWait(localID);
                     if (peerID != null && localID != null){
                         callback.onSelfJoined();
@@ -108,66 +107,6 @@ public class SignalingClient {
                 }
             }
         });
-
-
-        /*try {
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustAll, null);
-            IO.setDefaultHostnameVerifier((hostname, session) -> true);
-            IO.setDefaultSSLContext(sslContext);
-
-            socket = IO.socket("https://192.168.1.108:8080");
-            socket.connect();
-
-            socket.emit("create or join", room);
-
-            socket.on("created", args -> {
-                Log.e("chao", "room created");
-                callback.onCreateRoom();
-            });
-            socket.on("full", args -> {
-                Log.e("chao", "room full");
-            });
-            socket.on("join", args -> {
-                Log.e("chao", "peer joined");
-                callback.onPeerJoined();
-            });
-            socket.on("joined", args -> {
-                Log.e("chao", "self joined");
-                callback.onSelfJoined();
-            });
-            socket.on("log", args -> {
-                Log.e("chao", "log call " + Arrays.toString(args));
-            });
-            socket.on("bye", args -> {
-                Log.e("chao", "bye " + args[0]);
-                callback.onPeerLeave((String) args[0]);
-            });
-            socket.on("message", args -> {
-                Log.e("chao", "message " + Arrays.toString(args));
-                Object arg = args[0];
-                if(arg instanceof String) {
-
-                } else if(arg instanceof JSONObject) {
-                    JSONObject data = (JSONObject) arg;
-                    String type = data.optString("type");
-                    if("offer".equals(type)) {
-                        callback.onOfferReceived(data);
-                    } else if("answer".equals(type)) {
-                        callback.onAnswerReceived(data);
-                    } else if("candidate".equals(type)) {
-                        callback.onIceCandidateReceived(data);
-                    }
-                }
-            });
-
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (KeyManagementException e) {
-            e.printStackTrace();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }*/
     }
 
     public void sendWait(String client_id){
@@ -192,7 +131,6 @@ public class SignalingClient {
                             }
                             else{
                                 JSONObject jsonObject = new JSONObject(result);
-                                //Log.d("http-wait-response-j", String.valueOf(jsonObject));
                                 if (jsonObject.has("candidate")){
                                     callback.onIceCandidateReceived(jsonObject);
                                 }
@@ -266,7 +204,6 @@ public class SignalingClient {
         JSONObject jo = new JSONObject();
         jo.put("sdp", sdp.description);
         jo.put("type", "offer");
-        //RequestBody body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), String.valueOf(jo));
         RequestBody body = RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), String.valueOf(jo));
         Request request = new Request.Builder().post(body).url(url + "/message?peer_id=" + localID + "&to=" + peerID).build();
 

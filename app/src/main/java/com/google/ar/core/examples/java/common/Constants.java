@@ -18,8 +18,8 @@ public class Constants {
     public static int blend_shapeServerPort = 8002;
     public static int body_poseServerPort = 8003;
 
-    public static String WebRTCServerIp = "http://192.168.1.106:8888";
-    public static String peerName = "xlabs@DESKTOP-5VECIQN";
+    public static String WebRTCServerIp = "http://192.168.1.108:8888";
+    public static String peerName = "unity";
 
     public static String cameraFacingFront = "false";
     public static String binaryGraphName = "holistic_tracking_gpu.binarypb";
@@ -28,4 +28,7 @@ public class Constants {
     public static String poseLandmarks = "pose_landmarks";
     public static String flipFramesVertically = "true";
     public static String converterNumBuffers = "3";
+
+    public static int minBodyIndex = 10;
+    public static int maxBodyIndex = 25;
 }
