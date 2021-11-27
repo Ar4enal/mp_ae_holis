@@ -133,12 +133,14 @@ public class SignalingClient {
                                 JSONObject jsonObject = new JSONObject(result);
                                 if (jsonObject.has("candidate")){
                                     callback.onIceCandidateReceived(jsonObject);
+                                    sendWait(localID);
                                 }
                                 else if (jsonObject.getString("type").equals("answer")){
                                     callback.onAnswerReceived(jsonObject);
                                 }
                                 else if (jsonObject.getString("type").equals("offer")){
                                     callback.onOfferReceived(jsonObject);
+                                    sendWait(localID);
                                 }
                             }
                         } catch (JSONException e) {

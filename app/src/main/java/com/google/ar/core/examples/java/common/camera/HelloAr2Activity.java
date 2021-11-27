@@ -214,7 +214,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 Constants.poseLandmarks,
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
-                    Log.d(TAG, "Received pose landmarks packet.");
+                    //Log.d(TAG, "Received pose landmarks packet.");
                     try {
                         LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         String landmarks_list = getLandmarksListObject(multiFaceLandmarks, "pose");
@@ -267,8 +267,16 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 super.onIceCandidate(iceCandidate);
                 SignalingClient.get().sendIceCandidate(iceCandidate);
             }
+/*
+            @Override
+            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
+                super.onIceConnectionChange(iceConnectionState);
+                if (String.valueOf(iceConnectionState).equals("DISCONNECTED")){
+                    call();
+                }
+            }*/
 
-/*            @Override
+            /*            @Override
             public void onAddStream(MediaStream mediaStream) {
                 super.onAddStream(mediaStream);
                 VideoTrack remoteVideoTrack = mediaStream.videoTracks.get(0);

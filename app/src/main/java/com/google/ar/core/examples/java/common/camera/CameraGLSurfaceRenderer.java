@@ -71,7 +71,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     private final short drawOrder[] = {0, 1, 2, 0, 2, 3}; // order to draw vertices
     private int mvpMatrixHandle;
     private final float[] displayMatrix = new float[16];
-
+    private static Object prevARFaceBlendShapes;
     BmpProducer bitmapProducer;
 
     private FaceGeometryDisplay mFaceGeometryDisplay = new FaceGeometryDisplay();
@@ -209,6 +209,12 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                         faceBlendShapes.put("qy", face.getPose().qy());
                         faceBlendShapes.put("qz", face.getPose().qz());
                         faceBlendShapes.put("qw", face.getPose().qw());
+                        faceBlendShapes.put("face_detected", true);
+                        send_UDP(faceBlendShapes);
+                    }
+                    else if (face.getTrackingState() == ARTrackable.TrackingState.PAUSED){
+                        JSONObject faceBlendShapes = new JSONObject();
+                        faceBlendShapes.put("face_detected", false);
                         send_UDP(faceBlendShapes);
                     }
                 }
