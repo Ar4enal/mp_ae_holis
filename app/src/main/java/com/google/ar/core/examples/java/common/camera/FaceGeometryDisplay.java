@@ -308,7 +308,7 @@ public class FaceGeometryDisplay {
                 BYTES_PER_POINT, 0);
         GLES20.glVertexAttribPointer(mTextureCoordAttribute, TEXCOORD_COMPONENTS_NUMBER, GLES20.GL_FLOAT, false,
                 BYTES_PER_COORD, 0);
-        GLES20.glUniform4f(mColorUniform, 1.0f, 0.0f, 0.0f, 1.0f);
+        GLES20.glUniform4f(mColorUniform, 1.0f, 1.0f, 1.0f, 1.0f);
         GLES20.glUniformMatrix4fv(mModelViewProjectionUniform, 1, false, mModelViewProjections, 0);
         GLES20.glUniform1f(mPointSizeUniform, 5.0f); // Set the size of Point to 5.
         GLES20.glDrawArrays(GLES20.GL_POINTS, 0, mPointsNum);
