@@ -508,9 +508,9 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                     PoseLandmark current_landmarks = new PoseLandmark();
                     current_landmarks.setIndex(plandmarkIndex);
                     current_landmarks.setScore(landmark.getVisibility());
-                    current_landmarks.setX(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[0]);
-                    current_landmarks.setY(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[1]);
-                    current_landmarks.setZ(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[2]);
+                    current_landmarks.setX(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[0]);
+                    current_landmarks.setY(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[1]);
+                    current_landmarks.setZ(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[2]);
                     result_landmarks.add(current_landmarks);
                 }
                 ++plandmarkIndex;
@@ -525,28 +525,28 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         kalmanLowPassFilter.setFilterHashMapNow3D(plandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
         measurementUpdate(plandmarkIndex, kalmanLowPassFilter);
         kalmanLowPassFilter.setFilterHashMapPos3D(plandmarkIndex,
-                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[0] + (kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Now3D[0] - kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[0]) * kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).K[0],
-                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[1] + (kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Now3D[1] - kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[1]) * kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).K[1],
-                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[2] + (kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Now3D[2] - kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).X[2]) * kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).K[2]
+                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[0] + (kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Now3D[0] - kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[0]) * kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).K[0],
+                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[1] + (kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Now3D[1] - kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[1]) * kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).K[1],
+                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[2] + (kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Now3D[2] - kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[2]) * kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).K[2]
                 );
         kalmanLowPassFilter.setX(plandmarkIndex,
-                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[0],
-                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[1],
-                kalmanLowPassFilter.filterHashMap.get(plandmarkIndex).Pos3D[2]
+                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[0],
+                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[1],
+                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[2]
                 );
-        lowPassUpdate(kalmanLowPassFilter.filterHashMap.get(plandmarkIndex));
+        lowPassUpdate(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex));
     }
 
     private static void measurementUpdate(int plandmarkIndex, KalmanLowPassFilter measurement){
         measurement.setK(plandmarkIndex,
-                (measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ)/(measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ + KalmanParamR),
-                (measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ)/(measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ + KalmanParamR),
-                (measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ)/(measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ + KalmanParamR)
+                (measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ)/(measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ + KalmanParamR),
+                (measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ)/(measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ + KalmanParamR),
+                (measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ)/(measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ + KalmanParamR)
                 );
         measurement.setP(plandmarkIndex,
-                KalmanParamR * (measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ) / (KalmanParamR + measurement.filterHashMap.get(plandmarkIndex).P[0] + KalmanParamQ),
-                KalmanParamR * (measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ) / (KalmanParamR + measurement.filterHashMap.get(plandmarkIndex).P[1] + KalmanParamQ),
-                KalmanParamR * (measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ) / (KalmanParamR + measurement.filterHashMap.get(plandmarkIndex).P[2] + KalmanParamQ)
+                KalmanParamR * (measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ) / (KalmanParamR + measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ),
+                KalmanParamR * (measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ) / (KalmanParamR + measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ),
+                KalmanParamR * (measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ) / (KalmanParamR + measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ)
                 );
     }
 

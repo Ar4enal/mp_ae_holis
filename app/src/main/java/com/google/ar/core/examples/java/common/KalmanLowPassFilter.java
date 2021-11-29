@@ -3,7 +3,7 @@ package com.google.ar.core.examples.java.common;
 import java.util.HashMap;
 
 public class KalmanLowPassFilter{
-    public HashMap<Integer, Filter> filterHashMap = new HashMap<>();
+    private HashMap<Integer, Filter> filterHashMap = new HashMap<>();
 
     public class Filter{
         public Float[] P = {(float) 0, (float) 0, (float) 0};
@@ -29,6 +29,10 @@ public class KalmanLowPassFilter{
         for (int i = Constants.minBodyIndex + 1; i < Constants.maxBodyIndex; i++){
             filterHashMap.put(i, new Filter());
         }
+    }
+
+    public HashMap<Integer, Filter> getFilterHashMap(){
+        return filterHashMap;
     }
 
     public void setFilterHashMapNow3D(int i, Float x, Float y, Float z){
