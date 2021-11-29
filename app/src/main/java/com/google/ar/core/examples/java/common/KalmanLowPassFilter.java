@@ -3,9 +3,9 @@ package com.google.ar.core.examples.java.common;
 import java.util.HashMap;
 
 public class KalmanLowPassFilter{
-    private HashMap<Integer, Filter> filterHashMap = new HashMap<>();
+    private final HashMap<Integer, Filter> filterHashMap = new HashMap<>();
 
-    public class Filter{
+    public static class Filter{
         public Float[] P = {(float) 0, (float) 0, (float) 0};
         public Float[] X = {(float) 0, (float) 0, (float) 0};
         public Float[] K = {(float) 0, (float) 0, (float) 0};

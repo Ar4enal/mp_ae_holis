@@ -30,6 +30,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -95,17 +96,11 @@ import java.util.List;
 public class HelloAr2Activity extends AppCompatActivity implements View.OnClickListener, SignalingClient.Callback{
 
     public ARSession session;
-    private ARConfigBase mArConfig;
 
     private static String ServerIp = Constants.udpServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
 
-    private Button enter_ip;
-
-    private static Float KalmanParamQ = 0.001f;
-    private static Float KalmanParamR = 0.0015f;
-    private static Float LowPassParam = 0.1f;
-    private static KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
+    private static final KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
 
     // ########## Begin Mediapipe ##########
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
@@ -267,25 +262,9 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 super.onIceCandidate(iceCandidate);
                 SignalingClient.get().sendIceCandidate(iceCandidate);
             }
-/*
-            @Override
-            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-                super.onIceConnectionChange(iceConnectionState);
-                if (String.valueOf(iceConnectionState).equals("DISCONNECTED")){
-                    call();
-                }
-            }*/
-
-            /*            @Override
-            public void onAddStream(MediaStream mediaStream) {
-                super.onAddStream(mediaStream);
-                VideoTrack remoteVideoTrack = mediaStream.videoTracks.get(0);
-                runOnUiThread(() -> {
-                    remoteVideoTrack.addSink(remoteView);
-                });
-            }*/
         });
 
+        assert peerConnection != null;
         peerConnection.addStream(mediaStream);
     }
 
@@ -308,22 +287,14 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
         if (surfaceView != null) {
             if (session == null) {
-                Exception exception = null;
-                String message = null;
 
                 session = new ARSession(this);
-                mArConfig = new ARFaceTrackingConfig(session);
+                ARConfigBase mArConfig = new ARFaceTrackingConfig(session);
                 mArConfig.setPowerMode(ARConfigBase.PowerMode.POWER_SAVING);
                 session.configure(mArConfig);
 
-                if (message != null) {
-                    messageSnackbarHelper.showError(this, message);
-                    Log.e(TAG, "Exception creating session", exception);
-                    return;
-                }
             }
 
-            //session.resume();
             try {
                 session.resume();
             } catch (ARCameraNotAvailableException e) {
@@ -367,7 +338,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (!CameraPermissionHelper.hasCameraPermission(this)) {
             // Use toast instead of snackbar here since the activity will exit.
@@ -427,93 +398,23 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
 
     //打印輸出結果
-    private static JSONObject getLandmarksJsonObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException {
-        JSONObject landmarks_json_object = new JSONObject();
-        if (location == "face"){
-            int landmarkIndex = 0;
-            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()){
-                List<String> list = new ArrayList<String>();
-                list.add(String.format("%.8f", landmark.getX()));
-                list.add(String.format("%.8f", landmark.getY()));
-                list.add(String.format("%.8f", landmark.getZ()));
-                String tag = "face_landmark[" + landmarkIndex + "]";
-                landmarks_json_object.put(tag, list);
-                ++landmarkIndex;
-            }
-        }
-        else if(location == "right_hand"){
-            int rlandmarkIndex = 0;
-            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                List<String> list = new ArrayList<String>();
-                list.add(String.format("%.8f", landmark.getX()));
-                list.add(String.format("%.8f", landmark.getY()));
-                list.add(String.format("%.8f", landmark.getZ()));
-                String tag = "right_hand_landmark[" + rlandmarkIndex + "]";
-                landmarks_json_object.put(tag, list);
-                ++rlandmarkIndex;
-            }
-        }
-        else if(location == "left_hand"){
-            int llandmarkIndex = 0;
-            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                List<String> list = new ArrayList<String>();
-                list.add(String.format("%.8f", landmark.getX()));
-                list.add(String.format("%.8f", landmark.getY()));
-                list.add(String.format("%.8f", landmark.getZ()));
-                String tag = "left_hand_landmark[" + llandmarkIndex + "]";
-                landmarks_json_object.put(tag, list);
-                ++llandmarkIndex;
-            }
-        }
-        else if(location == "pose"){
-            int plandmarkIndex = 0;
-            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                List<String> list = new ArrayList<String>();
-                list.add(String.format("%.8f", landmark.getX()));
-                list.add(String.format("%.8f", landmark.getY()));
-                list.add(String.format("%.8f", landmark.getZ()));
-                String tag = "pose_landmark[" + plandmarkIndex + "]";
-                landmarks_json_object.put(tag, list);
-                ++plandmarkIndex;
-            }
-        }
-        return landmarks_json_object;
-    }
-
-/*    private static List<Float> getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location){
-        List<Float> result_landmarks = new ArrayList<Float>();
-        if (location == "pose"){
-            int plandmarkIndex = 0;
-            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                if (plandmarkIndex > 10 && plandmarkIndex < 25){
-                    result_landmarks.add(landmark.getVisibility());
-                    result_landmarks.add(landmark.getX());
-                    result_landmarks.add(landmark.getY());
-                    result_landmarks.add(landmark.getZ());
-                }
-                ++plandmarkIndex;
-            }
-        }
-        return result_landmarks;
-    }*/
-
     private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
         List<PoseLandmark> result_landmarks = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
-        if (location == "pose"){
-            int plandmarkIndex = 0;
+        if (location.equals("pose")){
+            int poseLandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                if (plandmarkIndex > Constants.minBodyIndex && plandmarkIndex < Constants.maxBodyIndex){
-                    kalmanUpdate(landmark, plandmarkIndex);
+                if (poseLandmarkIndex > Constants.minBodyIndex && poseLandmarkIndex < Constants.maxBodyIndex){
+                    kalmanUpdate(landmark, poseLandmarkIndex);
                     PoseLandmark current_landmarks = new PoseLandmark();
-                    current_landmarks.setIndex(plandmarkIndex);
+                    current_landmarks.setIndex(poseLandmarkIndex);
                     current_landmarks.setScore(landmark.getVisibility());
-                    current_landmarks.setX(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[0]);
-                    current_landmarks.setY(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[1]);
-                    current_landmarks.setZ(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[2]);
+                    current_landmarks.setX(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0]);
+                    current_landmarks.setY(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1]);
+                    current_landmarks.setZ(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]);
                     result_landmarks.add(current_landmarks);
                 }
-                ++plandmarkIndex;
+                ++poseLandmarkIndex;
             }
         }
 
@@ -521,32 +422,34 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         return jsonList;
     }
 
-    private static void kalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int plandmarkIndex){
-        kalmanLowPassFilter.setFilterHashMapNow3D(plandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
-        measurementUpdate(plandmarkIndex, kalmanLowPassFilter);
-        kalmanLowPassFilter.setFilterHashMapPos3D(plandmarkIndex,
-                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[0] + (kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Now3D[0] - kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[0]) * kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).K[0],
-                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[1] + (kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Now3D[1] - kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[1]) * kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).K[1],
-                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[2] + (kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Now3D[2] - kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).X[2]) * kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).K[2]
+    private static void kalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int poseLandmarkIndex){
+        kalmanLowPassFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
+        measurementUpdate(poseLandmarkIndex, kalmanLowPassFilter);
+        kalmanLowPassFilter.setFilterHashMapPos3D(poseLandmarkIndex,
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[0] + (kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[0] - kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[0]) * kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).K[0],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[1] + (kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[1] - kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[1]) * kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).K[1],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[2] + (kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[2] - kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[2]) * kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).K[2]
                 );
-        kalmanLowPassFilter.setX(plandmarkIndex,
-                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[0],
-                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[1],
-                kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex).Pos3D[2]
+        kalmanLowPassFilter.setX(poseLandmarkIndex,
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]
                 );
-        lowPassUpdate(kalmanLowPassFilter.getFilterHashMap().get(plandmarkIndex));
+        lowPassUpdate(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex));
     }
 
-    private static void measurementUpdate(int plandmarkIndex, KalmanLowPassFilter measurement){
-        measurement.setK(plandmarkIndex,
-                (measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ)/(measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ + KalmanParamR),
-                (measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ)/(measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ + KalmanParamR),
-                (measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ)/(measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ + KalmanParamR)
+    private static void measurementUpdate(int poseLandmarkIndex, KalmanLowPassFilter measurement){
+        Float kalmanParamQ = 0.001f;
+        Float kalmanParamR = 0.0015f;
+        measurement.setK(poseLandmarkIndex,
+                (measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ + kalmanParamR),
+                (measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ + kalmanParamR),
+                (measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ + kalmanParamR)
                 );
-        measurement.setP(plandmarkIndex,
-                KalmanParamR * (measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ) / (KalmanParamR + measurement.getFilterHashMap().get(plandmarkIndex).P[0] + KalmanParamQ),
-                KalmanParamR * (measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ) / (KalmanParamR + measurement.getFilterHashMap().get(plandmarkIndex).P[1] + KalmanParamQ),
-                KalmanParamR * (measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ) / (KalmanParamR + measurement.getFilterHashMap().get(plandmarkIndex).P[2] + KalmanParamQ)
+        measurement.setP(poseLandmarkIndex,
+                kalmanParamR * (measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ) / (kalmanParamR + measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ),
+                kalmanParamR * (measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ) / (kalmanParamR + measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ),
+                kalmanParamR * (measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ) / (kalmanParamR + measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ)
                 );
     }
 
@@ -554,23 +457,13 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         jp.PrevPos3D[0] = jp.Pos3D;
         for (int i = 1; i < jp.PrevPos3D.length; i++)
         {
-            jp.PrevPos3D[i][0] = jp.PrevPos3D[i][0] * LowPassParam + jp.PrevPos3D[i - 1][0] * (1f - LowPassParam);
-            jp.PrevPos3D[i][1] = jp.PrevPos3D[i][1] * LowPassParam + jp.PrevPos3D[i - 1][1] * (1f - LowPassParam);
-            jp.PrevPos3D[i][2] = jp.PrevPos3D[i][2] * LowPassParam + jp.PrevPos3D[i - 1][2] * (1f - LowPassParam);
+            Float lowPassParam = 0.1f;
+            jp.PrevPos3D[i][0] = jp.PrevPos3D[i][0] * lowPassParam + jp.PrevPos3D[i - 1][0] * (1f - lowPassParam);
+            jp.PrevPos3D[i][1] = jp.PrevPos3D[i][1] * lowPassParam + jp.PrevPos3D[i - 1][1] * (1f - lowPassParam);
+            jp.PrevPos3D[i][2] = jp.PrevPos3D[i][2] * lowPassParam + jp.PrevPos3D[i - 1][2] * (1f - lowPassParam);
         }
         jp.Pos3D = jp.PrevPos3D[jp.PrevPos3D.length - 1];
     }
-
-/*    private int getDegree(float p1x, float p1y, float p2x, float p2y, float p3x, float p3y){
-        float vector = (p2x-p1x)*(p3x-p1x) + (p2y-p1y)*(p3y-p1y);
-        double sqrt = Math.sqrt(
-                (Math.abs((p2x-p1x)*(p2x-p1x)) + Math.abs((p2y-p1y)*(p2y-p1y)))   *
-                        (Math.abs((p3x-p1x)*(p3x-p1x)) + Math.abs((p3y-p1y)*(p3y-p1y)))
-        );
-
-        double radian = Math.acos(vector/sqrt);
-        return (int) (180*radian/ Math.PI);
-    }*/
 
     // ########## End Mediapipe ##########
     private void send_UDP(String data) throws IOException {
@@ -585,7 +478,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     }
 
     private void bindView(){
-        enter_ip = (Button) findViewById(R.id.enter_ip);
+        Button enter_ip = (Button) findViewById(R.id.enter_ip);
         enter_ip.setOnClickListener(this);
     }
 

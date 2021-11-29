@@ -52,11 +52,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     private int viewWidth = 0;
     private int viewHeight = 0;
 
-    private float[] projmtx = new float[16];
-
     private int mTexture;
-    private String vertShader;
-    private String fragShader_Pre;
     private int programHandle;
     private int mPositionHandle;
     private int mTextureCoordHandle;
@@ -68,14 +64,13 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     private static final int TEXTURE_COORDS_PER_VERTEX = 2;
     private static final int CPV = POSITION_COORDS_PER_VERTEX + TEXTURE_COORDS_PER_VERTEX;
     private static final int VERTEX_STRIDE_BYTES = CPV * BYTES_PER_FLOAT;
-    private final short drawOrder[] = {0, 1, 2, 0, 2, 3}; // order to draw vertices
+    // order to draw vertices
     private int mvpMatrixHandle;
     private final float[] displayMatrix = new float[16];
-    private static Object prevARFaceBlendShapes;
     BmpProducer bitmapProducer;
 
-    private FaceGeometryDisplay mFaceGeometryDisplay = new FaceGeometryDisplay();
-    private Context mContext;
+    private final FaceGeometryDisplay mFaceGeometryDisplay = new FaceGeometryDisplay();
+    private final Context mContext;
     private static String ServerIp = Constants.udpServerIp;
     private static final int ServerPort = Constants.blend_shapeServerPort;
 
@@ -88,31 +83,18 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         bitmapProducer = mapProducer;
     }
 
-    private final float squareVertices[] = { // in counterclockwise order:
+    private final float[] squareVertices = { // in counterclockwise order:
             -1.0f, 1.0f,
             -1.0f, -1.0f,
             1.0f, -1.0f,
             1.0f, 1.0f
     };
-    private final float textureVerticesPreview[] = { // in counterclockwise order:
+    private final float[] textureVerticesPreview = { // in counterclockwise order:
             0.0f, 1.0f,
             1.0f, 1.0f,
             1.0f, 0.0f,
             0.0f, 0.0f
     };
-
-/*    private final float squareVertices[] = { // in counterclockwise order:
-            -1.0f, -1.0f,
-            1.0f, -1.0f,
-            -1.0f, 1.0f,
-            1.0f, 1.0f
-    };
-    private final float textureVerticesPreview[] = { // in counterclockwise order:
-            0.0f, 1.0f,
-            1.0f, 1.0f,
-            0.0f, 0.0f,
-            1.0f, 0.0f
-    };*/
 
     private final float[] VERTEX_DATA_FBO = new float[]{
             -1, -1, 1, 1.0f,
@@ -128,9 +110,9 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
             1, 1, 1, 0
     };
 
-    private FloatBuffer vertexBuffer = createBuffer(VERTEX_DATA);
+    private final FloatBuffer vertexBuffer = createBuffer(VERTEX_DATA);
 
-    private FloatBuffer vertexBufferFBO = createBuffer(VERTEX_DATA_FBO);
+    private final FloatBuffer vertexBufferFBO = createBuffer(VERTEX_DATA_FBO);
 
     private int mOffscreenTexture;
 
@@ -174,7 +156,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         //Log.d(TAG, "onDrawFrame(GL10 gl)");
         // Clear screen to notify driver it should not load any pixels from previous frame.
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-        if (viewWidth == 0 || viewWidth == 0) {
+        if (viewWidth == 0 || viewHeight == 0) {
             return;
         }
         if (mainActivity.session == null) {
@@ -182,10 +164,8 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         }
         // Notify ARCore session that the view size changed so that the perspective matrix and
         // the video background can be properly adjusted.
-        if (mainActivity.session != null) {
-            mainActivity.displayRotationHelper.updateSessionIfNeeded(mainActivity.session);
-            mainActivity.session.setCameraTextureName(mTexture);
-        }
+        mainActivity.displayRotationHelper.updateSessionIfNeeded(mainActivity.session);
+        mainActivity.session.setCameraTextureName(mTexture);
 
 
         try {
@@ -232,15 +212,14 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         DatagramSocket socket = new DatagramSocket();
         socket.send(packet);
         Log.d("send--face", String.valueOf(data));
-        //Log.d("packet-length", String.valueOf(data.length()));
     }
 
     private void initTexture() {
         verticesBuffer = IVCGLLib.glToFloatBuffer(squareVertices);
         textureVerticesPreviewBuffer = IVCGLLib.glToFloatBuffer(textureVerticesPreview);
 
-        vertShader = IVCGLLib.loadFromAssetsFile("IVC_VShader_Preview.sh", mainActivity.getResources());
-        fragShader_Pre = IVCGLLib.loadFromAssetsFile("IVC_FShader_Camera.sh", mainActivity.getResources());
+        String vertShader = IVCGLLib.loadFromAssetsFile("IVC_VShader_Preview.sh", mainActivity.getResources());
+        String fragShader_Pre = IVCGLLib.loadFromAssetsFile("IVC_FShader_Camera.sh", mainActivity.getResources());
         programHandle = IVCGLLib.glCreateProgram(vertShader, fragShader_Pre);
         mvpMatrixHandle = GLES20.glGetUniformLocation(programHandle, "uMVPMatrix");
         mPositionHandle = GLES20.glGetAttribLocation(programHandle, "position");

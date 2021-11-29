@@ -103,8 +103,6 @@ public class FaceGeometryDisplay {
 
     private int mPointSizeUniform;
 
-    private int mTextureUniform;
-
     private int mTextureCoordAttribute;
 
     private int mPointsNum = 0;
@@ -114,7 +112,7 @@ public class FaceGeometryDisplay {
     /**
      * The size of the MVP matrix is 4 x 4.
      */
-    private float[] mModelViewProjections = new float[16];
+    private final float[] mModelViewProjections = new float[16];
 
     /**
      * Initialize the OpenGL ES rendering related to face geometry, including creating the shader program.
@@ -169,7 +167,7 @@ public class FaceGeometryDisplay {
         mColorUniform = GLES20.glGetUniformLocation(mProgram, "inColor");
         mModelViewProjectionUniform = GLES20.glGetUniformLocation(mProgram, "inMVPMatrix");
         mPointSizeUniform = GLES20.glGetUniformLocation(mProgram, "inPointSize");
-        mTextureUniform = GLES20.glGetUniformLocation(mProgram, "inTexture");
+        int mTextureUniform = GLES20.glGetUniformLocation(mProgram, "inTexture");
         mTextureCoordAttribute = GLES20.glGetAttribLocation(mProgram, "inTexCoord");
     }
 

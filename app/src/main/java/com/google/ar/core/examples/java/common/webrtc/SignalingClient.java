@@ -48,28 +48,9 @@ public class SignalingClient {
     private Callback callback;
     private String localID;
     private String peerID;
-    private OkHttpClient client = new OkHttpClient();
-    private String url = Constants.WebRTCServerIp;
+    private final OkHttpClient client = new OkHttpClient();
+    private final String url = Constants.WebRTCServerIp;
     private String result;
-
-    private final TrustManager[] trustAll = new TrustManager[]{
-            new X509TrustManager() {
-                @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return new X509Certificate[0];
-                }
-            }
-    };
 
     public void setCallback(Callback callback) {
         this.callback = callback;
@@ -92,7 +73,6 @@ public class SignalingClient {
                     String[] clientNum = result.split("\n");
                     for (String element: clientNum){
                         String[] cur = element.split(",");
-                        //Log.d("localIndex", cur[0]);
                         if (cur[0].equals("mobile")){
                             localID = cur[1];
                         }
