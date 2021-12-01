@@ -456,9 +456,9 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
     private static void lowPassUpdate(KalmanLowPassFilter.Filter jp){
         jp.PrevPos3D[0] = jp.Pos3D;
+        Float lowPassParam = Constants.lowPassParam;
         for (int i = 1; i < jp.PrevPos3D.length; i++)
         {
-            Float lowPassParam = Constants.lowPassParam;
             jp.PrevPos3D[i][0] = jp.PrevPos3D[i][0] * lowPassParam + jp.PrevPos3D[i - 1][0] * (1f - lowPassParam);
             jp.PrevPos3D[i][1] = jp.PrevPos3D[i][1] * lowPassParam + jp.PrevPos3D[i - 1][1] * (1f - lowPassParam);
             jp.PrevPos3D[i][2] = jp.PrevPos3D[i][2] * lowPassParam + jp.PrevPos3D[i - 1][2] * (1f - lowPassParam);

@@ -247,8 +247,8 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
 
     private void lowPassUpdate(FaceKalmanLowPassFilter faceKalmanLowPassFilter) {
         faceKalmanLowPassFilter.PrevPos3D[0] = faceKalmanLowPassFilter.Pos3D;
+        Float lowPassParam = Constants.lowPassParam;
         for (int i = 1; i < faceKalmanLowPassFilter.PrevPos3D.length; i++){
-            Float lowPassParam = Constants.lowPassParam;
             faceKalmanLowPassFilter.PrevPos3D[i][0] = faceKalmanLowPassFilter.PrevPos3D[i][0] * lowPassParam + faceKalmanLowPassFilter.PrevPos3D[i-1][0] * (1f - lowPassParam);
             faceKalmanLowPassFilter.PrevPos3D[i][1] = faceKalmanLowPassFilter.PrevPos3D[i][1] * lowPassParam + faceKalmanLowPassFilter.PrevPos3D[i-1][1] * (1f - lowPassParam);
             faceKalmanLowPassFilter.PrevPos3D[i][2] = faceKalmanLowPassFilter.PrevPos3D[i][2] * lowPassParam + faceKalmanLowPassFilter.PrevPos3D[i-1][2] * (1f - lowPassParam);
