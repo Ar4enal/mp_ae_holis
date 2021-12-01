@@ -2,10 +2,12 @@ package com.google.ar.core.examples.java.common.webrtc;
 
 import android.util.Log;
 
-import com.google.ar.core.examples.java.common.Constants;
+import com.alibaba.fastjson.JSON;
+import com.google.ar.core.examples.java.common.Candidate;
 import com.google.ar.core.examples.java.common.Constants;
 import org.json.JSONException;
-import org.json.JSONObject;
+//import org.json.JSONObject;
+import com.alibaba.fastjson.JSONObject;
 import org.webrtc.IceCandidate;
 import org.webrtc.SessionDescription;
 
@@ -104,32 +106,47 @@ public class SignalingClient {
                     if (response.isSuccessful()) {
                         result = response.body().string();
                         Log.d("http-wait-response", result);
-                        try {
                             if (result.startsWith(Constants.peerName)){
                                 peerID = result.split(",")[1];
                                 sendWait(localID);
                             }
-                            else{
-                                JSONObject jsonObject = new JSONObject(result);
-                                if (jsonObject.has("candidate")){
-                                    callback.onIceCandidateReceived(jsonObject);
+                            else if (result.startsWith("\"{\\\"sdpMLineIndex\\\"")){
+                                JSONObject jsonObject = JSON.parseObject(changeString(result));
+                                //Candidate candidate = JSON.parseObject(result, Candidate.class);
+                                callback.onIceCandidateReceived(jsonObject);
+                                sendWait(localID);
+                            }
+                            else if (result.startsWith("\"{\\\"sdp\\\"")){
+                                JSONObject jsonObject = JSON.parseObject(changeString(result));
+                                if (jsonObject.getString("type").equals("offer")){
+                                    callback.onOfferReceived(jsonObject);
                                     sendWait(localID);
                                 }
                                 else if (jsonObject.getString("type").equals("answer")){
                                     callback.onAnswerReceived(jsonObject);
-                                }
-                                else if (jsonObject.getString("type").equals("offer")){
-                                    callback.onOfferReceived(jsonObject);
                                     sendWait(localID);
                                 }
                             }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
                     }
                 }
             });
         }
+    }
+
+    private String changeString(String result){
+        String replaceAllr = result.replaceAll("\\\\r", "\r");
+        //System.out.println("replaceAll:"+replaceAllr);
+
+        String replaceAlln = replaceAllr.replaceAll("\\\\n", "\n");
+        //System.out.println("replaceAll:"+replaceAlln);
+
+        String substring = replaceAlln.substring(1, replaceAlln.length() - 1);
+        //System.out.println("substring:"+substring);
+
+        String substring2 = substring.replaceAll("\\\\", "");
+        //System.out.println("substring:"+substring2);
+
+        return substring2;
     }
 
     public void sendSignOut(){
@@ -155,31 +172,27 @@ public class SignalingClient {
 
     public void sendIceCandidate(IceCandidate iceCandidate) {
         JSONObject jo = new JSONObject();
-        try {
-            jo.put("candidate", iceCandidate.sdp);
-            jo.put("sdpMLineIndex", iceCandidate.sdpMLineIndex);
-            jo.put("sdpMid", iceCandidate.sdpMid);
+        jo.put("candidate", iceCandidate.sdp);
+        jo.put("sdpMLineIndex", iceCandidate.sdpMLineIndex);
+        jo.put("sdpMid", iceCandidate.sdpMid);
 
-            RequestBody body = RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), String.valueOf(jo));
-            Request request = new Request.Builder().post(body).url(url + "/message?peer_id=" + localID + "&to=" + peerID).build();
+        RequestBody body = RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), String.valueOf(jo));
+        Request request = new Request.Builder().post(body).url(url + "/message?peer_id=" + localID + "&to=" + peerID).build();
 
-            client.newCall(request).enqueue(new okhttp3.Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.d("http-IceCandidate", "failure");
+        client.newCall(request).enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.d("http-IceCandidate", "failure");
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    result = response.body().string();
+                    Log.d("http-IceCandidate", result);
                 }
-
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
-                    if (response.isSuccessful()) {
-                        result = response.body().string();
-                        Log.d("http-IceCandidate", result);
-                    }
-                }
-            });
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+            }
+        });
     }
 
     public void sendOfferSessionDescription(SessionDescription sdp) throws JSONException {

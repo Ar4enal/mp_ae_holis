@@ -13,7 +13,7 @@ public class Constants {
     public static int blend_shapeServerPort = 8002;
     public static int body_poseServerPort = 8003;
 
-    public static String WebRTCServerIp = "http://192.168.1.112:8888";
+    public static String WebRTCServerIp = "http://192.168.1.108:8888";
     //public static String peerName = "xlabs@DESKTOP-5VECIQN";
     public static String peerName = "unity";
 
@@ -24,4 +24,7 @@ public class Constants {
 
     public static int minBodyIndex = 10;
     public static int maxBodyIndex = 25;
+    public static Float kalmanParamQ = 0.001f;
+    public static Float kalmanParamR = 0.0015f;
+    public static Float lowPassParam = 0.1f;
 }

@@ -15,6 +15,7 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 
 import com.google.ar.core.examples.java.common.Constants;
+import com.google.ar.core.examples.java.common.FaceKalmanLowPassFilter;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
@@ -24,6 +25,7 @@ import com.huawei.hiar.ARCamera;
 import com.huawei.hiar.ARFace;
 import com.huawei.hiar.ARFaceBlendShapes;
 import com.huawei.hiar.ARFrame;
+import com.huawei.hiar.ARPose;
 import com.huawei.hiar.ARTrackable;
 
 import org.json.JSONObject;
@@ -73,6 +75,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     private final Context mContext;
     private static String ServerIp = Constants.udpServerIp;
     private static final int ServerPort = Constants.blend_shapeServerPort;
+    private static final FaceKalmanLowPassFilter faceKalmanLowPassFilter = new FaceKalmanLowPassFilter();
 
     public CameraGLSurfaceRenderer(Context context, HelloAr2Activity mainActivity) {
         mContext = context;
@@ -185,6 +188,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                         mFaceGeometryDisplay.onDrawFrame(camera, face);
                         ARFaceBlendShapes blendShapes = face.getFaceBlendShapes();
                         JSONObject faceBlendShapes = new JSONObject(blendShapes.getBlendShapeDataMapKeyString());
+                        //kalmanUpdate(face.getPose());
                         faceBlendShapes.put("qx", face.getPose().qx());
                         faceBlendShapes.put("qy", face.getPose().qy());
                         faceBlendShapes.put("qz", face.getPose().qz());
@@ -206,6 +210,32 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
     }
+/*    private void kalmanUpdate(ARPose pose) {
+        faceKalmanLowPassFilter.setNow3D(pose);
+        measurementUpdate(faceKalmanLowPassFilter);
+        faceKalmanLowPassFilter.setPos3D(
+            faceKalmanLowPassFilter.X[0] + (faceKalmanLowPassFilter.Now3D[0] - faceKalmanLowPassFilter.X[0]) * faceKalmanLowPassFilter.K[0],
+                faceKalmanLowPassFilter.X[0] + (faceKalmanLowPassFilter.Now3D[0] - faceKalmanLowPassFilter.X[0]) * faceKalmanLowPassFilter.K[0],
+        );
+
+    }
+
+    private void measurementUpdate(FaceKalmanLowPassFilter faceKalmanLowPassFilter) {
+        Float kalmanParamQ = Constants.kalmanParamQ;
+        Float kalmanParamR = Constants.kalmanParamR;
+        faceKalmanLowPassFilter.setK(
+                (faceKalmanLowPassFilter.P[0] + kalmanParamQ) / (faceKalmanLowPassFilter.P[0] + kalmanParamQ + kalmanParamR),
+                (faceKalmanLowPassFilter.P[1] + kalmanParamQ) / (faceKalmanLowPassFilter.P[1] + kalmanParamQ + kalmanParamR),
+                (faceKalmanLowPassFilter.P[2] + kalmanParamQ) / (faceKalmanLowPassFilter.P[2] + kalmanParamQ + kalmanParamR),
+                (faceKalmanLowPassFilter.P[3] + kalmanParamQ) / (faceKalmanLowPassFilter.P[3] + kalmanParamQ + kalmanParamR)
+        );
+        faceKalmanLowPassFilter.setP(
+                kalmanParamR * (faceKalmanLowPassFilter.P[0] + kalmanParamQ) / (faceKalmanLowPassFilter.P[0] + kalmanParamQ + kalmanParamR),
+                kalmanParamR * (faceKalmanLowPassFilter.P[1] + kalmanParamQ) / (faceKalmanLowPassFilter.P[1] + kalmanParamQ + kalmanParamR),
+                kalmanParamR * (faceKalmanLowPassFilter.P[2] + kalmanParamQ) / (faceKalmanLowPassFilter.P[2] + kalmanParamQ + kalmanParamR),
+                kalmanParamR * (faceKalmanLowPassFilter.P[3] + kalmanParamQ) / (faceKalmanLowPassFilter.P[3] + kalmanParamQ + kalmanParamR)
+        );
+    }*/
 
     private void send_UDP(JSONObject data) throws IOException {
         DatagramPacket packet = new DatagramPacket(data.toString().getBytes(), data.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);

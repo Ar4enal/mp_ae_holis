@@ -34,8 +34,10 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.ar.core.examples.java.common.Candidate;
 import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.PoseLandmark;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
@@ -64,7 +66,6 @@ import com.huawei.hiar.ARSession;
 import com.huawei.hiar.exceptions.ARCameraNotAvailableException;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.Camera1Enumerator;
@@ -179,7 +180,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         AudioTrack audioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
 
         mediaStream = peerConnectionFactory.createLocalMediaStream("mediaStream");
-        mediaStream.addTrack(videoTrack);
+        //mediaStream.addTrack(videoTrack);
         mediaStream.addTrack(audioTrack);
 
         SignalingClient.get().setCallback(this);
@@ -439,8 +440,8 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     }
 
     private static void measurementUpdate(int poseLandmarkIndex, KalmanLowPassFilter measurement){
-        Float kalmanParamQ = 0.001f;
-        Float kalmanParamR = 0.0015f;
+        Float kalmanParamQ = Constants.kalmanParamQ;
+        Float kalmanParamR = Constants.kalmanParamR;
         measurement.setK(poseLandmarkIndex,
                 (measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ + kalmanParamR),
                 (measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ + kalmanParamR),
@@ -457,7 +458,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         jp.PrevPos3D[0] = jp.Pos3D;
         for (int i = 1; i < jp.PrevPos3D.length; i++)
         {
-            Float lowPassParam = 0.1f;
+            Float lowPassParam = Constants.lowPassParam;
             jp.PrevPos3D[i][0] = jp.PrevPos3D[i][0] * lowPassParam + jp.PrevPos3D[i - 1][0] * (1f - lowPassParam);
             jp.PrevPos3D[i][1] = jp.PrevPos3D[i][1] * lowPassParam + jp.PrevPos3D[i - 1][1] * (1f - lowPassParam);
             jp.PrevPos3D[i][2] = jp.PrevPos3D[i][2] * lowPassParam + jp.PrevPos3D[i - 1][2] * (1f - lowPassParam);
@@ -552,7 +553,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     public void onOfferReceived(JSONObject data) {
         runOnUiThread(() -> {
             peerConnection.setRemoteDescription(new SdpAdapter("localSetRemote"),
-                    new SessionDescription(SessionDescription.Type.OFFER, data.optString("sdp")));
+                    new SessionDescription(SessionDescription.Type.OFFER, data.getString("sdp")));
             peerConnection.createAnswer(new SdpAdapter("localAnswerSdp") {
                 @Override
                 public void onCreateSuccess(SessionDescription sdp) {
@@ -572,15 +573,15 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
     @Override
     public void onAnswerReceived(JSONObject data) {
         peerConnection.setRemoteDescription(new SdpAdapter("localSetRemote"),
-                new SessionDescription(SessionDescription.Type.ANSWER, data.optString("sdp")));
+                new SessionDescription(SessionDescription.Type.ANSWER, data.getString("sdp")));
     }
 
     @Override
     public void onIceCandidateReceived(JSONObject data) {
         peerConnection.addIceCandidate(new IceCandidate(
-                data.optString("sdpMid"),
-                data.optInt("sdpMLineIndex"),
-                data.optString("candidate")
+                data.getString("sdpMid"),
+                data.getInteger("sdpMLineIndex"),
+                data.getString("candidate")
         ));
     }
 }
