@@ -188,11 +188,11 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                         mFaceGeometryDisplay.onDrawFrame(camera, face);
                         ARFaceBlendShapes blendShapes = face.getFaceBlendShapes();
                         JSONObject faceBlendShapes = new JSONObject(blendShapes.getBlendShapeDataMapKeyString());
-                        //kalmanUpdate(face.getPose());
-                        faceBlendShapes.put("qx", face.getPose().qx());
-                        faceBlendShapes.put("qy", face.getPose().qy());
-                        faceBlendShapes.put("qz", face.getPose().qz());
-                        faceBlendShapes.put("qw", face.getPose().qw());
+                        kalmanUpdate(face.getPose());
+                        faceBlendShapes.put("qx", faceKalmanLowPassFilter.Pos3D[1]);
+                        faceBlendShapes.put("qy", faceKalmanLowPassFilter.Pos3D[2]);
+                        faceBlendShapes.put("qz", faceKalmanLowPassFilter.Pos3D[3]);
+                        faceBlendShapes.put("qw", faceKalmanLowPassFilter.Pos3D[0]);
                         faceBlendShapes.put("face_detected", true);
                         send_UDP(faceBlendShapes);
                     }
@@ -210,14 +210,22 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
     }
-/*    private void kalmanUpdate(ARPose pose) {
+    private void kalmanUpdate(ARPose pose) {
         faceKalmanLowPassFilter.setNow3D(pose);
         measurementUpdate(faceKalmanLowPassFilter);
         faceKalmanLowPassFilter.setPos3D(
             faceKalmanLowPassFilter.X[0] + (faceKalmanLowPassFilter.Now3D[0] - faceKalmanLowPassFilter.X[0]) * faceKalmanLowPassFilter.K[0],
-                faceKalmanLowPassFilter.X[0] + (faceKalmanLowPassFilter.Now3D[0] - faceKalmanLowPassFilter.X[0]) * faceKalmanLowPassFilter.K[0],
+                faceKalmanLowPassFilter.X[1] + (faceKalmanLowPassFilter.Now3D[1] - faceKalmanLowPassFilter.X[1]) * faceKalmanLowPassFilter.K[1],
+                faceKalmanLowPassFilter.X[2] + (faceKalmanLowPassFilter.Now3D[2] - faceKalmanLowPassFilter.X[2]) * faceKalmanLowPassFilter.K[2],
+                faceKalmanLowPassFilter.X[3] + (faceKalmanLowPassFilter.Now3D[3] - faceKalmanLowPassFilter.X[3]) * faceKalmanLowPassFilter.K[3]
         );
-
+        faceKalmanLowPassFilter.setX(
+                faceKalmanLowPassFilter.Pos3D[0],
+                faceKalmanLowPassFilter.Pos3D[1],
+                faceKalmanLowPassFilter.Pos3D[2],
+                faceKalmanLowPassFilter.Pos3D[3]
+                );
+        lowPassUpdate(faceKalmanLowPassFilter);
     }
 
     private void measurementUpdate(FaceKalmanLowPassFilter faceKalmanLowPassFilter) {
@@ -235,7 +243,19 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                 kalmanParamR * (faceKalmanLowPassFilter.P[2] + kalmanParamQ) / (faceKalmanLowPassFilter.P[2] + kalmanParamQ + kalmanParamR),
                 kalmanParamR * (faceKalmanLowPassFilter.P[3] + kalmanParamQ) / (faceKalmanLowPassFilter.P[3] + kalmanParamQ + kalmanParamR)
         );
-    }*/
+    }
+
+    private void lowPassUpdate(FaceKalmanLowPassFilter faceKalmanLowPassFilter) {
+        faceKalmanLowPassFilter.PrevPos3D[0] = faceKalmanLowPassFilter.Pos3D;
+        for (int i = 1; i < faceKalmanLowPassFilter.PrevPos3D.length; i++){
+            Float lowPassParam = Constants.lowPassParam;
+            faceKalmanLowPassFilter.PrevPos3D[i][0] = faceKalmanLowPassFilter.PrevPos3D[i][0] * lowPassParam + faceKalmanLowPassFilter.PrevPos3D[i-1][0] * (1f - lowPassParam);
+            faceKalmanLowPassFilter.PrevPos3D[i][1] = faceKalmanLowPassFilter.PrevPos3D[i][1] * lowPassParam + faceKalmanLowPassFilter.PrevPos3D[i-1][1] * (1f - lowPassParam);
+            faceKalmanLowPassFilter.PrevPos3D[i][2] = faceKalmanLowPassFilter.PrevPos3D[i][2] * lowPassParam + faceKalmanLowPassFilter.PrevPos3D[i-1][2] * (1f - lowPassParam);
+            faceKalmanLowPassFilter.PrevPos3D[i][3] = faceKalmanLowPassFilter.PrevPos3D[i][3] * lowPassParam + faceKalmanLowPassFilter.PrevPos3D[i-1][3] * (1f - lowPassParam);
+        }
+        faceKalmanLowPassFilter.Pos3D = faceKalmanLowPassFilter.PrevPos3D[faceKalmanLowPassFilter.PrevPos3D.length - 1];
+    }
 
     private void send_UDP(JSONObject data) throws IOException {
         DatagramPacket packet = new DatagramPacket(data.toString().getBytes(), data.toString().getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
