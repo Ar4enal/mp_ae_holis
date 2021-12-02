@@ -39,6 +39,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.ar.core.examples.java.common.Candidate;
 import com.google.ar.core.examples.java.common.Constants;
+import com.google.ar.core.examples.java.common.PoseAngle;
 import com.google.ar.core.examples.java.common.PoseLandmark;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
@@ -87,6 +88,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -100,7 +102,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
     private static String ServerIp = Constants.udpServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
-
     private static final KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
 
     // ########## Begin Mediapipe ##########
@@ -399,7 +400,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
 
     //打印輸出結果
-    private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
+/*    private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
         List<PoseLandmark> result_landmarks = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
         if (location.equals("pose")){
@@ -421,6 +422,103 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
         String jsonList = mapper.writeValueAsString(result_landmarks);
         return jsonList;
+    }*/
+
+    private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
+        List<PoseLandmark> result_landmarks = new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
+        if (location.equals("pose")){
+            int poseLandmarkIndex = 0;
+            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
+                if (poseLandmarkIndex > Constants.minBodyIndex && poseLandmarkIndex < Constants.maxBodyIndex){
+                    kalmanUpdate(landmark, poseLandmarkIndex);
+                    PoseLandmark current_landmarks = new PoseLandmark();
+                    current_landmarks.setIndex(poseLandmarkIndex);
+                    current_landmarks.setScore(landmark.getVisibility());
+                    current_landmarks.setX(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0]);
+                    current_landmarks.setY(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1]);
+                    current_landmarks.setZ(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]);
+                    result_landmarks.add(current_landmarks);
+                }
+                ++poseLandmarkIndex;
+            }
+        }
+
+        //return mapper.writeValueAsString(result_landmarks);
+
+        return mapper.writeValueAsString(calculateAngle(result_landmarks));
+    }
+
+    private static List<PoseAngle> calculateAngle(List<PoseLandmark> result_landmarks) {
+        HashMap<String, float[]> PoseAngleMap = setPoseLandmarks(result_landmarks);
+        List<PoseAngle> poseAngle = new ArrayList<>();
+
+        for (String name : PoseAngleMap.keySet()){
+            PoseAngle current_angle = new PoseAngle();
+            current_angle.setName(name);
+            if (name.equals("left_elbow") || name.equals("right_elbow")){
+                current_angle.setAngle(getElbowDegree(PoseAngleMap.get(name)));
+            }
+            else {
+                current_angle.setAngle(getDegree(PoseAngleMap.get(name)));
+            }
+            current_angle.setScore(PoseAngleMap.get(name)[6]);
+            poseAngle.add(current_angle);
+        }
+
+        return poseAngle;
+    }
+
+    private static HashMap<String, float[]> setPoseLandmarks(List<PoseLandmark> result_landmarks) {
+        HashMap<String, float[]> PoseAngleMap = new HashMap<>();
+        PoseAngleMap.put("left_wrist", new float[]{result_landmarks.get(5).getX(), result_landmarks.get(5).getY(), result_landmarks.get(11).getX(), result_landmarks.get(11).getY(), result_landmarks.get(3).getX(), result_landmarks.get(3).getY(), result_landmarks.get(5).getScore()});
+        PoseAngleMap.put("left_elbow", new float[]{result_landmarks.get(3).getX(), result_landmarks.get(3).getY(), result_landmarks.get(5).getX(), result_landmarks.get(5).getY(), result_landmarks.get(1).getX(), result_landmarks.get(1).getY(), result_landmarks.get(3).getScore()});
+        PoseAngleMap.put("left_shoulder", new float[]{result_landmarks.get(1).getX(), result_landmarks.get(1).getY(), result_landmarks.get(3).getX(), result_landmarks.get(3).getY(), result_landmarks.get(13).getX(), result_landmarks.get(13).getY(), result_landmarks.get(1).getScore()});
+        PoseAngleMap.put("right_shoulder", new float[]{result_landmarks.get(0).getX(), result_landmarks.get(0).getY(), result_landmarks.get(2).getX(), result_landmarks.get(2).getY(), result_landmarks.get(12).getX(), result_landmarks.get(12).getY(), result_landmarks.get(0).getScore()});
+        PoseAngleMap.put("right_elbow", new float[]{result_landmarks.get(2).getX(), result_landmarks.get(2).getY(), result_landmarks.get(4).getX(), result_landmarks.get(4).getY(), result_landmarks.get(0).getX(), result_landmarks.get(0).getY(), result_landmarks.get(2).getScore()});
+        PoseAngleMap.put("right_wrist", new float[]{result_landmarks.get(4).getX(), result_landmarks.get(4).getY(), result_landmarks.get(10).getX(), result_landmarks.get(10).getY(), result_landmarks.get(2).getX(), result_landmarks.get(2).getY(), result_landmarks.get(4).getScore()});
+        return PoseAngleMap;
+    }
+
+    private static int getDegree(float[] floats){
+        float p1x = floats[0];
+        float p1y = floats[1];
+        float p2x = floats[2];
+        float p2y = floats[3];
+        float p3x = floats[4];
+        float p3y = floats[5];
+        float vector = (p2x-p1x)*(p3x-p1x) + (p2y-p1y)*(p3y-p1y);
+        double sqrt = Math.sqrt(
+                (Math.abs((p2x-p1x)*(p2x-p1x)) + Math.abs((p2y-p1y)*(p2y-p1y)))   *
+                        (Math.abs((p3x-p1x)*(p3x-p1x)) + Math.abs((p3y-p1y)*(p3y-p1y)))
+        );
+        double radian = Math.acos(vector/sqrt);
+        return (int) (180*radian/ Math.PI);
+    }
+
+    private static int getElbowDegree(float[] floats) {
+        float p1x = floats[0];
+        float p1y = floats[1];
+        float p2x = floats[2];
+        float p2y = floats[3];
+        float p3x = floats[4];
+        float p3y = floats[5];
+        float k = (p1y - p3y) / (p1x - p3x);
+        float b = p1y - k * p1x;
+        int angle = 0;
+        float vector = (p2x-p1x)*(p3x-p1x) + (p2y-p1y)*(p3y-p1y);
+        double sqrt = Math.sqrt(
+                (Math.abs((p2x-p1x)*(p2x-p1x)) + Math.abs((p2y-p1y)*(p2y-p1y)))   *
+                        (Math.abs((p3x-p1x)*(p3x-p1x)) + Math.abs((p3y-p1y)*(p3y-p1y)))
+        );
+        double radian = Math.acos(vector/sqrt);
+        if ((p2x * k + b) >= p2y){
+            angle = (int) -(180*radian/ Math.PI);
+        }
+        else if ((p2x * k + b) < p2y){
+            angle = (int) (180*radian/ Math.PI);
+        }
+        return angle;
     }
 
     private static void kalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int poseLandmarkIndex){

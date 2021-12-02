@@ -1,11 +1,11 @@
 package com.google.ar.core.examples.java.common;
 
 public class PoseLandmark {
-    public int poseLandmark;
-    public Float score;
-    public Float x;
-    public Float y;
-    public Float z;
+    private int poseLandmark;
+    private Float score;
+    private Float x;
+    private Float y;
+    private Float z;
 
     public void setIndex(int i){
         this.poseLandmark = i;

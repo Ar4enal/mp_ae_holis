@@ -1,5 +1,7 @@
 package com.google.ar.core.examples.java.common;
 
+import java.util.HashMap;
+
 public class Constants {
 
     public static int mediapipeWidth = 720;
@@ -7,13 +9,13 @@ public class Constants {
 
     public static long previousTimestamp = 0;//解決activity退出前台再次進入，送入mediapipe時間戳不對的問題
 
-    public static String udpServerIp = "192.168.0.1";
+    public static String udpServerIp = "192.168.0.117";
 
     public static int audioServerPort = 8001;
     public static int blend_shapeServerPort = 8002;
     public static int body_poseServerPort = 8003;
 
-    public static String WebRTCServerIp = "http://192.168.1.108:8888";
+    public static String WebRTCServerIp = "http://192.168.0.117:8888";
     //public static String peerName = "xlabs@DESKTOP-5VECIQN";
     public static String peerName = "unity";
 
