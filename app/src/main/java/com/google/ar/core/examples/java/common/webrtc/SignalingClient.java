@@ -8,6 +8,8 @@ import com.google.ar.core.examples.java.common.Constants;
 import org.json.JSONException;
 //import org.json.JSONObject;
 import com.alibaba.fastjson.JSONObject;
+import com.google.ar.core.examples.java.common.camera.HelloAr2Activity;
+
 import org.webrtc.IceCandidate;
 import org.webrtc.SessionDescription;
 
@@ -51,7 +53,7 @@ public class SignalingClient {
     private String localID;
     private String peerID;
     private final OkHttpClient client = new OkHttpClient();
-    private final String url = Constants.WebRTCServerIp;
+    private String url ="http://" + HelloAr2Activity.ServerIp + ":8888";
     private String result;
 
     public void setCallback(Callback callback) {

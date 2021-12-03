@@ -17,6 +17,7 @@
 package com.google.ar.core.examples.java.common.camera;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
 import android.opengl.GLSurfaceView;
@@ -96,11 +97,12 @@ import java.util.List;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3D model.
  */
-public class HelloAr2Activity extends AppCompatActivity implements View.OnClickListener, SignalingClient.Callback{
+public class HelloAr2Activity extends AppCompatActivity implements SignalingClient.Callback{
 
     public ARSession session;
 
-    private static String ServerIp = Constants.udpServerIp;
+    //private static String ServerIp = Constants.udpServerIp;
+    public static String ServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
     private static final KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
 
@@ -150,9 +152,12 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
         surfaceView = findViewById(R.id.surfaceview);
-        bindView();
+        //bindView();
+        Intent intent = getIntent();
+        ServerIp = intent.getStringExtra("server_ip");
+        setServerIp(ServerIp);
+
         displayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
-        //AudioRecordUtil.getInstance().start();
 
         EglBase.Context eglBaseContext = EglBase.create().getEglBaseContext();
 
@@ -216,9 +221,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                         LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         String landmarks_list = getLandmarksListObject(multiFaceLandmarks, "pose");
                         send_UDP(landmarks_list);
-                    } catch (InvalidProtocolBufferException | JSONException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
+                    } catch (JSONException | IOException e) {
                         e.printStackTrace();
                     }
                 });
@@ -227,6 +230,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
 
 
         glSurfaceRenderer = new CameraGLSurfaceRenderer(this, this);
+        glSurfaceRenderer.setServerIp(ServerIp);
         surfaceView.setSharedContext(eglManager.getContext());
         surfaceView.setPreserveEGLContextOnPause(true);
         surfaceView.setEGLContextClientVersion(2);
@@ -234,7 +238,6 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         surfaceView.setRenderer(glSurfaceRenderer);
         surfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         surfaceView.setWillNotDraw(false);//默认情况下，出于性能考虑，会被设置成WILL_NOT_DROW,这样ondraw就不会被执行了，
-
     }
 
     private VideoCapturer createCameraCapturer(boolean isFront) {
@@ -576,7 +579,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
         ServerIp = ip;
     }
 
-    private void bindView(){
+    /*private void bindView(){
         Button enter_ip = (Button) findViewById(R.id.enter_ip);
         enter_ip.setOnClickListener(this);
     }
@@ -594,7 +597,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
                 public void onClick(DialogInterface dialogInterface, int i) {
                     String ip = et.getText().toString();
                     Toast.makeText(HelloAr2Activity.this, "UDP server ip:" + ip, Toast.LENGTH_SHORT).show();
-                    AudioRecordUtil.getInstance().setServerIp(ip);
+                    //AudioRecordUtil.getInstance().setServerIp(ip);
                     glSurfaceRenderer.setServerIp(ip);
                     setServerIp(ip);
                     dialogInterface.cancel();
@@ -609,7 +612,7 @@ public class HelloAr2Activity extends AppCompatActivity implements View.OnClickL
             });
             dialog.show();
         }
-    }
+    }*/
 
     @Override
     public void onCreateRoom() {
