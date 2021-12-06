@@ -12,6 +12,13 @@ android {
         versionCode 1
         versionName '1.0'
     }
+    android.applicationVariants.all {
+        variant ->
+            variant.outputs.all {
+                // 此处指定生成的apk文件名
+                outputFileName = "Digital Man.apk"
+            }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8

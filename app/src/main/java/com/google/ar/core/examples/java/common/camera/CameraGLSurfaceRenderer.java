@@ -1,26 +1,16 @@
 package com.google.ar.core.examples.java.common.camera;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
-import android.media.Image;
+import android.graphics.Color;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
-import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.util.Log;
-import android.view.SurfaceHolder;
 
 import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.FaceKalmanLowPassFilter;
-import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
-import com.google.mediapipe.components.FrameProcessor;
-import com.google.mediapipe.glutil.ShaderUtil;
 import com.huawei.hiar.ARCamera;
 import com.huawei.hiar.ARFace;
 import com.huawei.hiar.ARFaceBlendShapes;
@@ -30,7 +20,6 @@ import com.huawei.hiar.ARTrackable;
 
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -39,7 +28,6 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Arrays;
 import java.util.Collection;
 
 import javax.microedition.khronos.egl.EGLConfig;
