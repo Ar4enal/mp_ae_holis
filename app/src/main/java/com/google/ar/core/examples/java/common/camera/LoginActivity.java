@@ -24,7 +24,6 @@ import com.google.mediapipe.components.PermissionHelper;
 public class LoginActivity extends Activity implements View.OnClickListener{
     private static final String TAG = LoginActivity.class.getSimpleName();
     private static String server_ip;
-    private boolean isFirstClick = true;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -40,7 +39,6 @@ public class LoginActivity extends Activity implements View.OnClickListener{
     protected void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
-        isFirstClick = true;
     }
 
     @Override
@@ -59,11 +57,6 @@ public class LoginActivity extends Activity implements View.OnClickListener{
     @SuppressLint("NonConstantResourceId")
     @Override
     public void onClick(View v) {
-        /*if (!isFirstClick) {
-            return;
-        } else {
-            isFirstClick = false;
-        }*/
         switch (v.getId()){
             case R.id.enter_ip:
                 AlertDialog.Builder dialog = new AlertDialog.Builder(LoginActivity.this);
@@ -75,7 +68,7 @@ public class LoginActivity extends Activity implements View.OnClickListener{
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         String ip = et.getText().toString();
-                        Toast.makeText(LoginActivity.this, "Cloud server ip:" + ip, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "云端服务器IP地址: " + ip, Toast.LENGTH_SHORT).show();
                         server_ip = ip;
                         dialogInterface.cancel();
                     }

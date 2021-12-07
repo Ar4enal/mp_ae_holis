@@ -101,7 +101,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
 
     public ARSession session;
 
-    //private static String ServerIp = Constants.udpServerIp;
     public static String ServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
     private static final KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
@@ -578,41 +577,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     private void setServerIp(String ip){
         ServerIp = ip;
     }
-
-    /*private void bindView(){
-        Button enter_ip = (Button) findViewById(R.id.enter_ip);
-        enter_ip.setOnClickListener(this);
-    }
-
-    @Override
-    public void onClick(View v) {
-        if (v.getId() == R.id.enter_ip){
-            AlertDialog.Builder dialog = new AlertDialog.Builder(HelloAr2Activity.this);
-            dialog.setTitle("Please enter UDP server IP address");
-            final View view = View.inflate(HelloAr2Activity.this, R.layout.udpserver_ip, null);
-            EditText et = view.findViewById(R.id.server_ip);
-            dialog.setView(view);
-            dialog.setPositiveButton("confirm", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    String ip = et.getText().toString();
-                    Toast.makeText(HelloAr2Activity.this, "UDP server ip:" + ip, Toast.LENGTH_SHORT).show();
-                    //AudioRecordUtil.getInstance().setServerIp(ip);
-                    glSurfaceRenderer.setServerIp(ip);
-                    setServerIp(ip);
-                    dialogInterface.cancel();
-                }
-            });
-
-            dialog.setNegativeButton("cancel", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    dialogInterface.cancel();
-                }
-            });
-            dialog.show();
-        }
-    }*/
 
     @Override
     public void onCreateRoom() {

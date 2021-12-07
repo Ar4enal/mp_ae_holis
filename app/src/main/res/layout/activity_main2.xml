@@ -31,20 +31,20 @@
         android:layout_weight="1"
         android:layout_gravity="bottom"/>
 
-    <FrameLayout
-        android:id="@+id/preview_display_layout"
-        android:layout_width="match_parent"
-        android:layout_weight="1"
-        android:layout_height="0dp">
-
-<!--      <Button
-          android:id="@+id/enter_ip"
-          android:layout_width="121dp"
-          android:layout_height="wrap_content"
-          android:layout_gravity="bottom|right"
-          android:text="UDP SERVER IP" />-->
-    </FrameLayout>
   </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:id="@+id/preview_display_layout"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="0dp">
+        </FrameLayout>
+    </LinearLayout>
 
 
 </RelativeLayout>
