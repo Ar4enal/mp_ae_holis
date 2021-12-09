@@ -1,6 +1,8 @@
 package com.google.ar.core.examples.java.common;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class Constants {
 
@@ -14,6 +16,8 @@ public class Constants {
     public static int audioServerPort = 8001;
     public static int blend_shapeServerPort = 8002;
     public static int body_poseServerPort = 8003;
+    public static int body_lefthandServerPort = 8004;
+    public static int body_righthandServerPort = 8005;
 
     public static String WebRTCServerIp = "http://192.168.0.1:8888";
     //public static String peerName = "xlabs@DESKTOP-5VECIQN";
@@ -23,6 +27,8 @@ public class Constants {
     public static String inputVideoStreamName = "input_video";
     public static String outputVideoStreamName = "output_video";
     public static String poseLandmarks = "pose_landmarks";
+    public static String leftHandLandmarks = "left_hand_landmarks";
+    public static String rightHandLandmarks = "right_hand_landmarks";
 
     public static int minBodyIndex = 10;
     public static int maxBodyIndex = 25;

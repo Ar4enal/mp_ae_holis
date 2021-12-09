@@ -16,7 +16,6 @@
 
 package com.google.ar.core.examples.java.common.camera;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
@@ -27,25 +26,21 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.ar.core.examples.java.common.Candidate;
 import com.google.ar.core.examples.java.common.Constants;
-import com.google.ar.core.examples.java.common.PoseAngle;
+import com.google.ar.core.examples.java.common.LeftHandLandmark;
 import com.google.ar.core.examples.java.common.PoseLandmark;
+import com.google.ar.core.examples.java.common.RightHandLandmark;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
-import com.google.ar.core.examples.java.common.helpers.AudioRecordUtil;
 import com.google.ar.core.examples.java.common.helpers.CameraPermissionHelper;
 import com.google.ar.core.examples.java.common.helpers.DisplayRotationHelper;
 import com.google.ar.core.examples.java.common.helpers.FullScreenHelper;
@@ -61,7 +56,6 @@ import com.google.mediapipe.formats.proto.LandmarkProto;
 import com.google.mediapipe.framework.AndroidAssetUtil;
 import com.google.mediapipe.framework.PacketGetter;
 import com.google.mediapipe.glutil.EglManager;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.huawei.hiar.ARConfigBase;
 import com.huawei.hiar.ARFaceTrackingConfig;
 import com.huawei.hiar.ARSession;
@@ -81,15 +75,12 @@ import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SessionDescription;
 import org.webrtc.VideoCapturer;
-import org.webrtc.VideoSource;
-import org.webrtc.VideoTrack;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -104,6 +95,12 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     public static String ServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
     private static final KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
+
+/*    private static String bodylandmark;
+    private static String poselandmark;
+    private static String lhlandmark;
+    private static String rhlandmark;*/
+
 
     // ########## Begin Mediapipe ##########
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
@@ -176,10 +173,10 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 .createPeerConnectionFactory();
 
         // create VideoCapturer
-        VideoCapturer videoCapturer = createCameraCapturer(true);
-        VideoSource videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
+        //VideoCapturer videoCapturer = createCameraCapturer(true);
+        //VideoSource videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         // create VideoTrack
-        VideoTrack videoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
+        //VideoTrack videoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
 
         AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
         AudioTrack audioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
@@ -189,7 +186,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         mediaStream.addTrack(audioTrack);
 
         SignalingClient.get().setCallback(this);
-        call();
+        webrtcCall();
 
         // ########## Begin Mediapipe ##########
         previewDisplayView = new SurfaceView(this);
@@ -215,12 +212,38 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 Constants.poseLandmarks,
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
-                    //Log.d(TAG, "Received pose landmarks packet.");
                     try {
                         LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         String landmarks_list = getLandmarksListObject(multiFaceLandmarks, "pose");
-                        send_UDP(landmarks_list);
-                    } catch (JSONException | IOException e) {
+                        send_UDP(landmarks_list, "pose");
+                        //poselandmark = getLandmarksListObject(multiFaceLandmarks, "pose");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+        processor.addPacketCallback(
+                Constants.leftHandLandmarks,
+                (packet) -> {
+                    byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
+                    try {
+                        LandmarkProto.NormalizedLandmarkList leftHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getLandmarksListObject(leftHandLandmarks, "left_hand");
+                        send_UDP(landmarks_list, "left_hand");
+                        //lhlandmark = getLandmarksListObject(leftHandLandmarks, "left_hand");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+        processor.addPacketCallback(
+                Constants.rightHandLandmarks,
+                (packet) -> {
+                    byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
+                    try {
+                        LandmarkProto.NormalizedLandmarkList rightHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getLandmarksListObject(rightHandLandmarks, "right_hand");
+                        send_UDP(landmarks_list, "right_hand");
+                        //rhlandmark = getLandmarksListObject(rightHandLandmarks, "right_hand");
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                 });
@@ -257,7 +280,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         return null;
     }
 
-    private void call() {
+    private void webrtcCall() {
         List<PeerConnection.IceServer> iceServers = new ArrayList<>();
         iceServers.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
         peerConnection = peerConnectionFactory.createPeerConnection(iceServers, new PeerConnectionAdapter("localconnection") {
@@ -296,7 +319,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 ARConfigBase mArConfig = new ARFaceTrackingConfig(session);
                 mArConfig.setPowerMode(ARConfigBase.PowerMode.POWER_SAVING);
                 session.configure(mArConfig);
-
             }
 
             try {
@@ -316,8 +338,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         startProducer();
         Log.d(TAG, "onResume: ");
     }
-
-
 
     @Override
     public void onPause() {
@@ -402,10 +422,10 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
 
 
     //打印輸出結果
-/*    private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
-        List<PoseLandmark> result_landmarks = new ArrayList<>();
+    private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
         if (location.equals("pose")){
+            List<PoseLandmark> result_landmarks = new ArrayList<>();
             int poseLandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
                 if (poseLandmarkIndex > Constants.minBodyIndex && poseLandmarkIndex < Constants.maxBodyIndex){
@@ -420,38 +440,47 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 }
                 ++poseLandmarkIndex;
             }
+            //return mapper.writeValueAsString(calculateAngle(result_landmarks));
+            return mapper.writeValueAsString(result_landmarks);
         }
-
-        String jsonList = mapper.writeValueAsString(result_landmarks);
-        return jsonList;
-    }*/
-
-    private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JSONException, JsonProcessingException {
-        List<PoseLandmark> result_landmarks = new ArrayList<>();
-        ObjectMapper mapper = new ObjectMapper();
-        if (location.equals("pose")){
-            int poseLandmarkIndex = 0;
+        else if (location.equals("left_hand")){
+            List<LeftHandLandmark> result_landmarks = new ArrayList<>();
+            int leftHandLandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                if (poseLandmarkIndex > Constants.minBodyIndex && poseLandmarkIndex < Constants.maxBodyIndex){
-                    kalmanUpdate(landmark, poseLandmarkIndex);
-                    PoseLandmark current_landmarks = new PoseLandmark();
-                    current_landmarks.setIndex(poseLandmarkIndex);
-                    current_landmarks.setScore(landmark.getVisibility());
-                    current_landmarks.setX(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0]);
-                    current_landmarks.setY(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1]);
-                    current_landmarks.setZ(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]);
-                    result_landmarks.add(current_landmarks);
-                }
-                ++poseLandmarkIndex;
+                //kalmanUpdate(landmark, leftHandLandmarkIndex);
+                LeftHandLandmark current_landmarks = new LeftHandLandmark();
+                current_landmarks.setIndex(leftHandLandmarkIndex);
+                current_landmarks.setX(landmark.getX());
+                current_landmarks.setY(landmark.getY());
+                current_landmarks.setZ(landmark.getZ());
+                result_landmarks.add(current_landmarks);
+                ++leftHandLandmarkIndex;
             }
+            return mapper.writeValueAsString(result_landmarks);
         }
-
+        else if (location.equals("right_hand")){
+            List<RightHandLandmark> result_landmarks = new ArrayList<>();
+            int rightHandLandmarkIndex = 0;
+            for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
+                //kalmanUpdate(landmark, rightHandLandmarkIndex);
+                RightHandLandmark current_landmarks = new RightHandLandmark();
+                current_landmarks.setIndex(rightHandLandmarkIndex);
+                current_landmarks.setX(landmark.getX());
+                current_landmarks.setY(landmark.getY());
+                current_landmarks.setZ(landmark.getZ());
+                result_landmarks.add(current_landmarks);
+                ++rightHandLandmarkIndex;
+            }
+            return mapper.writeValueAsString(result_landmarks);
+        }
+        else{
+            return "null";
+        }
         //return mapper.writeValueAsString(result_landmarks);
-
-        return mapper.writeValueAsString(calculateAngle(result_landmarks));
     }
 
-    private static List<PoseAngle> calculateAngle(List<PoseLandmark> result_landmarks) {
+
+/*    private static List<PoseAngle> calculateAngle(List<PoseLandmark> result_landmarks) {
         HashMap<String, float[]> PoseAngleMap = setPoseLandmarks(result_landmarks);
         List<PoseAngle> poseAngle = new ArrayList<>();
 
@@ -521,7 +550,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             angle = (int) (180*radian/ Math.PI);
         }
         return angle;
-    }
+    }*/
 
     private static void kalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int poseLandmarkIndex){
         kalmanLowPassFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
@@ -567,8 +596,23 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     }
 
     // ########## End Mediapipe ##########
-    private void send_UDP(String data) throws IOException {
-        DatagramPacket packet = new DatagramPacket(data.getBytes(), data.getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
+    private void send_UDP(String data, String location) throws IOException {
+        int port;
+        switch (location) {
+            case "pose":
+                port = Constants.body_poseServerPort;
+                break;
+            case "left_hand":
+                port = Constants.body_lefthandServerPort;
+                break;
+            case "right_hand":
+                port = Constants.body_righthandServerPort;
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + location);
+        }
+        //DatagramPacket packet = new DatagramPacket(data.getBytes(), data.getBytes().length, InetAddress.getByName(ServerIp), ServerPort);
+        DatagramPacket packet = new DatagramPacket(data.getBytes(), data.getBytes().length, InetAddress.getByName(ServerIp), port);
         DatagramSocket socket = new DatagramSocket();
         socket.send(packet);
         Log.d("send--body", data);
