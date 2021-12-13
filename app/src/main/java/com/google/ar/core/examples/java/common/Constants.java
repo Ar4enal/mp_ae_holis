@@ -23,12 +23,12 @@ public class Constants {
     //public static String peerName = "xlabs@DESKTOP-5VECIQN";
     public static String peerName = "unity";
 
-    public static String binaryGraphName = "holistic_tracking_gpu.binarypb";
+    public static String binaryGraphName = "holistic_tracking_gpu_hand.binarypb";
     public static String inputVideoStreamName = "input_video";
     public static String outputVideoStreamName = "output_video";
-    public static String poseLandmarks = "pose_landmarks";
-    public static String leftHandLandmarks = "left_hand_landmarks";
-    public static String rightHandLandmarks = "right_hand_landmarks";
+    public static String poseLandmarks = "pose_world_landmarks";
+    public static String leftHandLandmarks = "left_hand_world_landmarks";
+    public static String rightHandLandmarks = "right_hand_world_landmarks";
 
     public static int minBodyIndex = 10;
     public static int maxBodyIndex = 25;

@@ -35,6 +35,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.ar.core.examples.java.common.Constants;
+import com.google.ar.core.examples.java.common.HandKalmanFilter;
 import com.google.ar.core.examples.java.common.LeftHandLandmark;
 import com.google.ar.core.examples.java.common.PoseLandmark;
 import com.google.ar.core.examples.java.common.RightHandLandmark;
@@ -95,6 +96,8 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     public static String ServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
     private static final KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
+    private static final HandKalmanFilter rightHandKalmanFilter = new HandKalmanFilter();
+    private static final HandKalmanFilter leftHandKalmanFilter = new HandKalmanFilter();
 
 /*    private static String bodylandmark;
     private static String poselandmark;
@@ -138,7 +141,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
     private EglSurfaceView surfaceView;
 
-    private final SnackbarHelper messageSnackbarHelper = new SnackbarHelper();
     public DisplayRotationHelper displayRotationHelper;
 
     private CameraGLSurfaceRenderer glSurfaceRenderer = null;
@@ -213,10 +215,12 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        LandmarkProto.NormalizedLandmarkList multiFaceLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
-                        String landmarks_list = getLandmarksListObject(multiFaceLandmarks, "pose");
+                        //LandmarkProto.NormalizedLandmarkList PoseLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
+                        //String landmarks_list = getLandmarksListObject(PoseLandmarks, "pose");
+                        //send_UDP(landmarks_list, "pose");
+                        LandmarkProto.LandmarkList poseWorldLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getWorldLandmarks(poseWorldLandmarks, "pose");
                         send_UDP(landmarks_list, "pose");
-                        //poselandmark = getLandmarksListObject(multiFaceLandmarks, "pose");
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -226,10 +230,9 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        LandmarkProto.NormalizedLandmarkList leftHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
-                        String landmarks_list = getLandmarksListObject(leftHandLandmarks, "left_hand");
+                        LandmarkProto.LandmarkList leftHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getWorldLandmarks(leftHandLandmarks, "left_hand");
                         send_UDP(landmarks_list, "left_hand");
-                        //lhlandmark = getLandmarksListObject(leftHandLandmarks, "left_hand");
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -239,10 +242,9 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        LandmarkProto.NormalizedLandmarkList rightHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
-                        String landmarks_list = getLandmarksListObject(rightHandLandmarks, "right_hand");
+                        LandmarkProto.LandmarkList rightHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getWorldLandmarks(rightHandLandmarks, "right_hand");
                         send_UDP(landmarks_list, "right_hand");
-                        //rhlandmark = getLandmarksListObject(rightHandLandmarks, "right_hand");
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -422,6 +424,61 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
 
 
     //打印輸出結果
+    private String getWorldLandmarks(LandmarkProto.LandmarkList poseWorldLandmarks, String location) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        if (location.equals("pose")){
+            List<PoseLandmark> result_landmarks = new ArrayList<>();
+            int poseLandmarkIndex = 0;
+            for (LandmarkProto.Landmark landmark : poseWorldLandmarks.getLandmarkList()) {
+                if (poseLandmarkIndex > 10 && poseLandmarkIndex < 25) {
+                    kalmanUpdateWorld(landmark, poseLandmarkIndex);
+                    PoseLandmark current_landmarks = new PoseLandmark();
+                    current_landmarks.setIndex(poseLandmarkIndex);
+                    current_landmarks.setScore(landmark.getVisibility());
+                    current_landmarks.setX(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0]);
+                    current_landmarks.setY(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1]);
+                    current_landmarks.setZ(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]);
+                    result_landmarks.add(current_landmarks);
+                }
+                ++poseLandmarkIndex;
+            }
+            return mapper.writeValueAsString(result_landmarks);
+        }
+        else if (location.equals("left_hand")){
+            List<LeftHandLandmark> result_landmarks = new ArrayList<>();
+            int leftHandLandmarkIndex = 0;
+            for (LandmarkProto.Landmark landmark : poseWorldLandmarks.getLandmarkList()) {
+                leftHandKalmanUpdate(landmark, leftHandLandmarkIndex);
+                LeftHandLandmark current_landmarks = new LeftHandLandmark();
+                current_landmarks.setIndex(leftHandLandmarkIndex);
+                current_landmarks.setX(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[0]);
+                current_landmarks.setY(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[1]);
+                current_landmarks.setZ(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[2]);
+                result_landmarks.add(current_landmarks);
+                ++leftHandLandmarkIndex;
+            }
+            return mapper.writeValueAsString(result_landmarks);
+        }
+        else if (location.equals("right_hand")){
+            List<RightHandLandmark> result_landmarks = new ArrayList<>();
+            int rightHandLandmarkIndex = 0;
+            for (LandmarkProto.Landmark landmark : poseWorldLandmarks.getLandmarkList()) {
+                rightHandKalmanUpdate(landmark, rightHandLandmarkIndex);
+                RightHandLandmark current_landmarks = new RightHandLandmark();
+                current_landmarks.setIndex(rightHandLandmarkIndex);
+                current_landmarks.setX(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
+                current_landmarks.setY(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
+                current_landmarks.setZ(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
+                result_landmarks.add(current_landmarks);
+                ++rightHandLandmarkIndex;
+            }
+            return mapper.writeValueAsString(result_landmarks);
+        }
+        else{
+            return "null";
+        }
+    }
+
     private static String getLandmarksListObject(LandmarkProto.NormalizedLandmarkList landmarks, String location) throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
         if (location.equals("pose")){
@@ -440,19 +497,18 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 }
                 ++poseLandmarkIndex;
             }
-            //return mapper.writeValueAsString(calculateAngle(result_landmarks));
             return mapper.writeValueAsString(result_landmarks);
         }
         else if (location.equals("left_hand")){
             List<LeftHandLandmark> result_landmarks = new ArrayList<>();
             int leftHandLandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                //kalmanUpdate(landmark, leftHandLandmarkIndex);
+                //leftHandKalmanUpdate(landmark, leftHandLandmarkIndex);
                 LeftHandLandmark current_landmarks = new LeftHandLandmark();
                 current_landmarks.setIndex(leftHandLandmarkIndex);
-                current_landmarks.setX(landmark.getX());
-                current_landmarks.setY(landmark.getY());
-                current_landmarks.setZ(landmark.getZ());
+                current_landmarks.setX(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[0]);
+                current_landmarks.setY(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[1]);
+                current_landmarks.setZ(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[2]);
                 result_landmarks.add(current_landmarks);
                 ++leftHandLandmarkIndex;
             }
@@ -462,12 +518,12 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             List<RightHandLandmark> result_landmarks = new ArrayList<>();
             int rightHandLandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                //kalmanUpdate(landmark, rightHandLandmarkIndex);
+                //rightHandKalmanUpdate(landmark, rightHandLandmarkIndex);
                 RightHandLandmark current_landmarks = new RightHandLandmark();
                 current_landmarks.setIndex(rightHandLandmarkIndex);
-                current_landmarks.setX(landmark.getX());
-                current_landmarks.setY(landmark.getY());
-                current_landmarks.setZ(landmark.getZ());
+                current_landmarks.setX(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
+                current_landmarks.setY(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
+                current_landmarks.setZ(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
                 result_landmarks.add(current_landmarks);
                 ++rightHandLandmarkIndex;
             }
@@ -476,7 +532,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         else{
             return "null";
         }
-        //return mapper.writeValueAsString(result_landmarks);
     }
 
 
@@ -552,6 +607,22 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         return angle;
     }*/
 
+    private static void kalmanUpdateWorld(LandmarkProto.Landmark landmark, int poseLandmarkIndex){
+        kalmanLowPassFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
+        measurementUpdate(poseLandmarkIndex, kalmanLowPassFilter);
+        kalmanLowPassFilter.setFilterHashMapPos3D(poseLandmarkIndex,
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[0] + (kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[0] - kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[0]) * kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).K[0],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[1] + (kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[1] - kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[1]) * kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).K[1],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[2] + (kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[2] - kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).X[2]) * kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).K[2]
+        );
+        kalmanLowPassFilter.setX(poseLandmarkIndex,
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1],
+                kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]
+        );
+        lowPassUpdate(kalmanLowPassFilter.getFilterHashMap().get(poseLandmarkIndex));
+    }
+
     private static void kalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int poseLandmarkIndex){
         kalmanLowPassFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
         measurementUpdate(poseLandmarkIndex, kalmanLowPassFilter);
@@ -594,6 +665,68 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         }
         jp.Pos3D = jp.PrevPos3D[jp.PrevPos3D.length - 1];
     }
+
+
+    //hand filter
+    private static void leftHandKalmanUpdate(LandmarkProto.Landmark landmark, int poseLandmarkIndex){
+        leftHandKalmanFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
+        handMeasurementUpdate(poseLandmarkIndex, leftHandKalmanFilter);
+        leftHandKalmanFilter.setFilterHashMapPos3D(poseLandmarkIndex,
+                leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[0] + (leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[0] - leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[0]) * leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).K[0],
+                leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[1] + (leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[1] - leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[1]) * leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).K[1],
+                leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[2] + (leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[2] - leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[2]) * leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).K[2]
+        );
+        leftHandKalmanFilter.setX(poseLandmarkIndex,
+                leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0],
+                leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1],
+                leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]
+        );
+        handLowPassUpdate(leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex));
+    }
+
+    private static void rightHandKalmanUpdate(LandmarkProto.Landmark landmark, int poseLandmarkIndex){
+        rightHandKalmanFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
+        handMeasurementUpdate(poseLandmarkIndex, rightHandKalmanFilter);
+        rightHandKalmanFilter.setFilterHashMapPos3D(poseLandmarkIndex,
+                rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[0] + (rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[0] - rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[0]) * rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).K[0],
+                rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[1] + (rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[1] - rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[1]) * rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).K[1],
+                rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[2] + (rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Now3D[2] - rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).X[2]) * rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).K[2]
+        );
+        rightHandKalmanFilter.setX(poseLandmarkIndex,
+                rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[0],
+                rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[1],
+                rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex).Pos3D[2]
+        );
+        handLowPassUpdate(rightHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex));
+    }
+
+    private static void handMeasurementUpdate(int poseLandmarkIndex, HandKalmanFilter measurement){
+        Float kalmanParamQ = Constants.kalmanParamQ;
+        Float kalmanParamR = Constants.kalmanParamR;
+        measurement.setK(poseLandmarkIndex,
+                (measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ + kalmanParamR),
+                (measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ + kalmanParamR),
+                (measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ + kalmanParamR)
+        );
+        measurement.setP(poseLandmarkIndex,
+                kalmanParamR * (measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ) / (kalmanParamR + measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ),
+                kalmanParamR * (measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ) / (kalmanParamR + measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ),
+                kalmanParamR * (measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ) / (kalmanParamR + measurement.getFilterHashMap().get(poseLandmarkIndex).P[2] + kalmanParamQ)
+        );
+    }
+
+    private static void handLowPassUpdate(HandKalmanFilter.Filter jp){
+        jp.PrevPos3D[0] = jp.Pos3D;
+        Float lowPassParam = Constants.lowPassParam;
+        for (int i = 1; i < jp.PrevPos3D.length; i++)
+        {
+            jp.PrevPos3D[i][0] = jp.PrevPos3D[i][0] * lowPassParam + jp.PrevPos3D[i - 1][0] * (1f - lowPassParam);
+            jp.PrevPos3D[i][1] = jp.PrevPos3D[i][1] * lowPassParam + jp.PrevPos3D[i - 1][1] * (1f - lowPassParam);
+            jp.PrevPos3D[i][2] = jp.PrevPos3D[i][2] * lowPassParam + jp.PrevPos3D[i - 1][2] * (1f - lowPassParam);
+        }
+        jp.Pos3D = jp.PrevPos3D[jp.PrevPos3D.length - 1];
+    }
+
 
     // ########## End Mediapipe ##########
     private void send_UDP(String data, String location) throws IOException {
