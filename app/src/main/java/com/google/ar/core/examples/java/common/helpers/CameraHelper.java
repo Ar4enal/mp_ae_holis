@@ -84,6 +84,8 @@ public class CameraHelper {
 
     private Surface mPreViewSurface;
 
+    private Integer cameraCalibration = 100;
+
     private CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
@@ -135,6 +137,7 @@ public class CameraHelper {
             for (String id : cameraManager.getCameraIdList()) {
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(id);
                 Integer cameraLensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                Integer mCameraCalibration = characteristics.get(CameraCharacteristics.LENS_INFO_FOCUS_DISTANCE_CALIBRATION);
                 if (cameraLensFacing == null) {
                     continue;
                 }
@@ -146,12 +149,20 @@ public class CameraHelper {
                 if (maps == null || maps.getOutputSizes(SurfaceTexture.class) == null) {
                     continue;
                 }
-                mPreviewSize = getOptimalSize(maps.getOutputSizes(SurfaceTexture.class), width, height);
+                /*mPreviewSize = getOptimalSize(maps.getOutputSizes(SurfaceTexture.class), width, height);
                 mCameraId = id;
                 LogUtil.info(TAG, "Preview width = " + mPreviewSize.getWidth() + ", height = "
                     + mPreviewSize.getHeight() + ", cameraId = " + mCameraId);
-                break;
+                break;*/
+                //判断广角
+                if (mCameraCalibration < cameraCalibration){
+                    mPreviewSize = getOptimalSize(maps.getOutputSizes(SurfaceTexture.class), width, height);
+                    mCameraId = id;
+                    cameraCalibration = mCameraCalibration;
+                }
             }
+            LogUtil.info(TAG, "Preview width = " + mPreviewSize.getWidth() + ", height = "
+                    + mPreviewSize.getHeight() + ", cameraId = " + mCameraId);
         } catch (CameraAccessException e) {
             LogUtil.error(TAG, "Set upCamera error");
         }
