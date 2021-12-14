@@ -19,9 +19,12 @@ package com.google.ar.core.examples.java.common.camera;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
+import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -37,11 +40,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.ar.core.examples.java.common.Constants;
 import com.google.ar.core.examples.java.common.HandKalmanFilter;
 import com.google.ar.core.examples.java.common.LeftHandLandmark;
+import com.google.ar.core.examples.java.common.LogUtil;
 import com.google.ar.core.examples.java.common.PoseLandmark;
 import com.google.ar.core.examples.java.common.RightHandLandmark;
 import com.google.ar.core.examples.java.common.converter.BitmapConverter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
+import com.google.ar.core.examples.java.common.helpers.CameraHelper;
 import com.google.ar.core.examples.java.common.helpers.CameraPermissionHelper;
 import com.google.ar.core.examples.java.common.helpers.DisplayRotationHelper;
 import com.google.ar.core.examples.java.common.helpers.FullScreenHelper;
@@ -92,6 +97,15 @@ import java.util.List;
 public class HelloAr2Activity extends AppCompatActivity implements SignalingClient.Callback{
 
     public ARSession session;
+    
+    private boolean isOpenCameraOutside = true;
+    private CameraHelper mCamera;
+    private int textureId = -1;
+    private ARConfigBase mArConfig;
+    private Surface mPreViewSurface;
+    private Surface mVgaSurface;
+    private Surface mMetaDataSurface;
+    private Surface mDepthSurface;
 
     public static String ServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
@@ -215,12 +229,12 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        //LandmarkProto.NormalizedLandmarkList PoseLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
-                        //String landmarks_list = getLandmarksListObject(PoseLandmarks, "pose");
-                        //send_UDP(landmarks_list, "pose");
-                        LandmarkProto.LandmarkList poseWorldLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
-                        String landmarks_list = getWorldLandmarks(poseWorldLandmarks, "pose");
+                        LandmarkProto.NormalizedLandmarkList PoseLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getLandmarksListObject(PoseLandmarks, "pose");
                         send_UDP(landmarks_list, "pose");
+                        //LandmarkProto.LandmarkList poseWorldLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
+                        //String landmarks_list = getWorldLandmarks(poseWorldLandmarks, "pose");
+                        //send_UDP(landmarks_list, "pose");
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -230,8 +244,10 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        LandmarkProto.LandmarkList leftHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
-                        String landmarks_list = getWorldLandmarks(leftHandLandmarks, "left_hand");
+                        //LandmarkProto.LandmarkList leftHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
+                        //String landmarks_list = getWorldLandmarks(leftHandLandmarks, "left_hand");
+                        LandmarkProto.NormalizedLandmarkList leftHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getLandmarksListObject(leftHandLandmarks, "left_hand");
                         send_UDP(landmarks_list, "left_hand");
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -242,8 +258,10 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        LandmarkProto.LandmarkList rightHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
-                        String landmarks_list = getWorldLandmarks(rightHandLandmarks, "right_hand");
+                        //LandmarkProto.LandmarkList rightHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
+                        //String landmarks_list = getWorldLandmarks(rightHandLandmarks, "right_hand");
+                        LandmarkProto.NormalizedLandmarkList rightHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
+                        String landmarks_list = getLandmarksListObject(rightHandLandmarks, "right_hand");
                         send_UDP(landmarks_list, "right_hand");
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -313,13 +331,15 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     @Override
     protected void onResume() {
         super.onResume();
-
         if (surfaceView != null) {
             if (session == null) {
 
                 session = new ARSession(this);
-                ARConfigBase mArConfig = new ARFaceTrackingConfig(session);
+                mArConfig = new ARFaceTrackingConfig(session);
                 mArConfig.setPowerMode(ARConfigBase.PowerMode.POWER_SAVING);
+                if (isOpenCameraOutside) {
+                    mArConfig.setImageInputMode(ARConfigBase.ImageInputMode.EXTERNAL_INPUT_ALL);
+                }
                 session.configure(mArConfig);
             }
 
@@ -330,11 +350,12 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 session = null;
                 return;
             }
+
             if (surfaceView != null)
                 surfaceView.onResume();
             displayRotationHelper.onResume();
         }
-
+        setCamera();
         converter = new BitmapConverter(eglManager.getContext());
         converter.setConsumer(processor);
         startProducer();
@@ -448,7 +469,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             List<LeftHandLandmark> result_landmarks = new ArrayList<>();
             int leftHandLandmarkIndex = 0;
             for (LandmarkProto.Landmark landmark : poseWorldLandmarks.getLandmarkList()) {
-                leftHandKalmanUpdate(landmark, leftHandLandmarkIndex);
+                //leftHandKalmanUpdate(landmark, leftHandLandmarkIndex);
                 LeftHandLandmark current_landmarks = new LeftHandLandmark();
                 current_landmarks.setIndex(leftHandLandmarkIndex);
                 current_landmarks.setX(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[0]);
@@ -463,7 +484,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             List<RightHandLandmark> result_landmarks = new ArrayList<>();
             int rightHandLandmarkIndex = 0;
             for (LandmarkProto.Landmark landmark : poseWorldLandmarks.getLandmarkList()) {
-                rightHandKalmanUpdate(landmark, rightHandLandmarkIndex);
+                //rightHandKalmanUpdate(landmark, rightHandLandmarkIndex);
                 RightHandLandmark current_landmarks = new RightHandLandmark();
                 current_landmarks.setIndex(rightHandLandmarkIndex);
                 current_landmarks.setX(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
@@ -503,7 +524,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             List<LeftHandLandmark> result_landmarks = new ArrayList<>();
             int leftHandLandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                //leftHandKalmanUpdate(landmark, leftHandLandmarkIndex);
+                leftHandKalmanUpdate(landmark, leftHandLandmarkIndex);
                 LeftHandLandmark current_landmarks = new LeftHandLandmark();
                 current_landmarks.setIndex(leftHandLandmarkIndex);
                 current_landmarks.setX(leftHandKalmanFilter.getFilterHashMap().get(leftHandLandmarkIndex).Pos3D[0]);
@@ -518,12 +539,12 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             List<RightHandLandmark> result_landmarks = new ArrayList<>();
             int rightHandLandmarkIndex = 0;
             for (LandmarkProto.NormalizedLandmark landmark : landmarks.getLandmarkList()) {
-                //rightHandKalmanUpdate(landmark, rightHandLandmarkIndex);
+                rightHandKalmanUpdate(landmark, rightHandLandmarkIndex);
                 RightHandLandmark current_landmarks = new RightHandLandmark();
                 current_landmarks.setIndex(rightHandLandmarkIndex);
                 current_landmarks.setX(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
-                current_landmarks.setY(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
-                current_landmarks.setZ(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[0]);
+                current_landmarks.setY(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[1]);
+                current_landmarks.setZ(rightHandKalmanFilter.getFilterHashMap().get(rightHandLandmarkIndex).Pos3D[2]);
                 result_landmarks.add(current_landmarks);
                 ++rightHandLandmarkIndex;
             }
@@ -668,7 +689,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
 
 
     //hand filter
-    private static void leftHandKalmanUpdate(LandmarkProto.Landmark landmark, int poseLandmarkIndex){
+    private static void leftHandKalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int poseLandmarkIndex){
         leftHandKalmanFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
         handMeasurementUpdate(poseLandmarkIndex, leftHandKalmanFilter);
         leftHandKalmanFilter.setFilterHashMapPos3D(poseLandmarkIndex,
@@ -684,7 +705,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         handLowPassUpdate(leftHandKalmanFilter.getFilterHashMap().get(poseLandmarkIndex));
     }
 
-    private static void rightHandKalmanUpdate(LandmarkProto.Landmark landmark, int poseLandmarkIndex){
+    private static void rightHandKalmanUpdate(LandmarkProto.NormalizedLandmark landmark, int poseLandmarkIndex){
         rightHandKalmanFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
         handMeasurementUpdate(poseLandmarkIndex, rightHandKalmanFilter);
         rightHandKalmanFilter.setFilterHashMapPos3D(poseLandmarkIndex,
@@ -729,6 +750,63 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
 
 
     // ########## End Mediapipe ##########
+
+    private void setCamera() {
+        if (isOpenCameraOutside && mCamera == null) {
+            LogUtil.info(TAG, "new Camera");
+            DisplayMetrics dm = new DisplayMetrics();
+            mCamera = new CameraHelper(this);
+            mCamera.setupCamera(dm.widthPixels, dm.heightPixels);
+        }
+
+        // Check whether setCamera is called for the first time.
+        if (isOpenCameraOutside) {
+            if (textureId == -1) {
+                //int[] textureIds = new int[1];
+                //GLES20.glGenTextures(1, textureIds, 0);
+                textureId = glSurfaceRenderer.getmTexture();
+            }
+            session.setCameraTextureName(textureId);
+            initSurface();
+            SurfaceTexture surfaceTexture = new SurfaceTexture(textureId);
+            mCamera.setPreviewTexture(surfaceTexture);
+            mCamera.setPreViewSurface(mPreViewSurface);
+            mCamera.setVgaSurface(mVgaSurface);
+            mCamera.setDepthSurface(mDepthSurface);
+            if (!mCamera.openCamera()) {
+                String showMessage = "Open camera filed!";
+                LogUtil.error(TAG, showMessage);
+                Toast.makeText(this, showMessage, Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
+    }
+
+    private void initSurface() {
+        List<ARConfigBase.SurfaceType> surfaceTypeList = mArConfig.getImageInputSurfaceTypes();
+        List<Surface> surfaceList = mArConfig.getImageInputSurfaces();
+
+        LogUtil.info(TAG, "surfaceList size : " + surfaceList.size());
+        int size = surfaceTypeList.size();
+        for (int i = 0; i < size; i++) {
+            ARConfigBase.SurfaceType type = surfaceTypeList.get(i);
+            Surface surface = surfaceList.get(i);
+            if (ARConfigBase.SurfaceType.PREVIEW.equals(type)) {
+                mPreViewSurface = surface;
+            } else if (ARConfigBase.SurfaceType.VGA.equals(type)) {
+                mVgaSurface = surface;
+            } else if (ARConfigBase.SurfaceType.METADATA.equals(type)) {
+                mMetaDataSurface = surface;
+            } else if (ARConfigBase.SurfaceType.DEPTH.equals(type)) {
+                mDepthSurface = surface;
+            } else {
+                LogUtil.info(TAG, "Unknown type.");
+            }
+            LogUtil.info(TAG, "list[" + i + "] get surface : " + surface + ", type : " + type);
+        }
+    }
+
+
     private void send_UDP(String data, String location) throws IOException {
         int port;
         switch (location) {

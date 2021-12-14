@@ -198,6 +198,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
     }
+
     private void kalmanUpdate(ARPose pose) {
         faceKalmanLowPassFilter.setNow3D(pose);
         measurementUpdate(faceKalmanLowPassFilter);
@@ -264,6 +265,9 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
         mTextureCoordHandle = GLES20.glGetAttribLocation(programHandle, "inputTextureCoordinate");
     }
 
+    public int getmTexture(){
+        return mTexture;
+    }
 
     private void drawFrameBuffer() {
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFrameBuffer);
