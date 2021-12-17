@@ -12,10 +12,12 @@ import com.google.ar.core.examples.java.common.FaceKalmanLowPassFilter;
 import com.google.ar.core.examples.java.common.converter.BmpProducer;
 import com.google.ar.core.examples.java.common.egl.EglSurfaceView;
 import com.huawei.hiar.ARCamera;
+import com.huawei.hiar.ARConfigBase;
 import com.huawei.hiar.ARFace;
 import com.huawei.hiar.ARFaceBlendShapes;
 import com.huawei.hiar.ARFrame;
 import com.huawei.hiar.ARPose;
+import com.huawei.hiar.ARSession;
 import com.huawei.hiar.ARTrackable;
 
 import org.json.JSONObject;
@@ -64,6 +66,11 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
     private static String ServerIp = Constants.udpServerIp;
     private static final int ServerPort = Constants.blend_shapeServerPort;
     private static final FaceKalmanLowPassFilter faceKalmanLowPassFilter = new FaceKalmanLowPassFilter();
+
+    private static final float UPDATE_INTERVAL = 0.5f;
+    private int frames = 0;
+    private long lastInterval;
+    private float fps;
 
     public CameraGLSurfaceRenderer(Context context, HelloAr2Activity mainActivity) {
         mContext = context;
@@ -165,7 +172,8 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                 ARFrame frame = mainActivity.session.update();
                 ARCamera camera = frame.getCamera();
                 //Log.d(TAG, "onDrawFrame: width"+camera.getCameraImageIntrinsics().getImageDimensions()[0]+" "+camera.getCameraImageIntrinsics().getImageDimensions()[1]);
-
+                fps = doFpsCalculate();
+                Log.d("fps", String.valueOf(fps));
                 Collection<ARFace> faces = mainActivity.session.getAllTrackables(ARFace.class);
                 Log.d(TAG, "Face number: " + faces.size());
                 // Draw background.
@@ -483,5 +491,22 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
 
     public void setServerIp(String ip) {
         ServerIp = ip;
+    }
+
+    private float doFpsCalculate() {
+        ++frames;
+        long timeNow = System.currentTimeMillis();
+
+        // Convert millisecond to second.
+        if (((timeNow - lastInterval) / 1000.0f) > UPDATE_INTERVAL) {
+            fps = frames / ((timeNow - lastInterval) / 1000.0f);
+            frames = 0;
+            lastInterval = timeNow;
+        }
+        return fps;
+    }
+
+    public float getFps(){
+        return fps;
     }
 }

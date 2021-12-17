@@ -19,9 +19,10 @@ package com.google.ar.core.examples.java.common.camera;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
-import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Surface;
@@ -29,6 +30,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -50,7 +52,6 @@ import com.google.ar.core.examples.java.common.helpers.CameraHelper;
 import com.google.ar.core.examples.java.common.helpers.CameraPermissionHelper;
 import com.google.ar.core.examples.java.common.helpers.DisplayRotationHelper;
 import com.google.ar.core.examples.java.common.helpers.FullScreenHelper;
-import com.google.ar.core.examples.java.common.helpers.SnackbarHelper;
 import com.google.ar.core.examples.java.common.webrtc.PeerConnectionAdapter;
 import com.google.ar.core.examples.java.common.webrtc.SdpAdapter;
 import com.google.ar.core.examples.java.common.webrtc.SignalingClient;
@@ -106,18 +107,11 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     private Surface mVgaSurface;
     private Surface mMetaDataSurface;
     private Surface mDepthSurface;
-
     public static String ServerIp;
     private static final int ServerPort = Constants.body_poseServerPort;
     private static final KalmanLowPassFilter kalmanLowPassFilter = new KalmanLowPassFilter();
     private static final HandKalmanFilter rightHandKalmanFilter = new HandKalmanFilter();
     private static final HandKalmanFilter leftHandKalmanFilter = new HandKalmanFilter();
-
-/*    private static String bodylandmark;
-    private static String poselandmark;
-    private static String lhlandmark;
-    private static String rhlandmark;*/
-
 
     // ########## Begin Mediapipe ##########
     private static final boolean FLIP_FRAMES_VERTICALLY = true;
@@ -222,7 +216,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 Constants.outputVideoStreamName);
         processor.getVideoSurfaceOutput().setFlipY(FLIP_FRAMES_VERTICALLY);
 
-        PermissionHelper.checkAndRequestCameraPermissions(this);
+        //PermissionHelper.checkAndRequestCameraPermissions(this);
 
         processor.addPacketCallback(
                 Constants.poseLandmarks,
@@ -805,7 +799,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             LogUtil.info(TAG, "list[" + i + "] get surface : " + surface + ", type : " + type);
         }
     }
-
 
     private void send_UDP(String data, String location) throws IOException {
         int port;

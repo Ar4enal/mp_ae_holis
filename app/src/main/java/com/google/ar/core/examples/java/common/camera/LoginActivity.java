@@ -21,7 +21,7 @@ import com.google.ar.core.examples.java.common.helpers.AudioRecordUtil;
 import com.google.ar.core.examples.java.helloar.R;
 import com.google.mediapipe.components.PermissionHelper;
 
-public class LoginActivity extends Activity implements View.OnClickListener{
+public class LoginActivity extends Activity implements View.OnClickListener {
     private static final String TAG = LoginActivity.class.getSimpleName();
     private static String server_ip;
 
@@ -32,11 +32,13 @@ public class LoginActivity extends Activity implements View.OnClickListener{
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.login_main);
         bindView();
-        PermissionHelper.checkAndRequestAudioPermissions(this);
+        //PermissionHelper.checkAndRequestAudioPermissions(this);
+        PermissionHelper.checkAndRequestCameraPermissions(this);
     }
 
     @Override
     protected void onResume() {
+        PermissionHelper.checkAndRequestAudioPermissions(this);
         Log.d(TAG, "onResume");
         super.onResume();
     }
@@ -49,7 +51,7 @@ public class LoginActivity extends Activity implements View.OnClickListener{
     }
 
 
-    private void bindView(){
+    private void bindView() {
         Button enter_ip = findViewById(R.id.enter_ip);
         enter_ip.setOnClickListener(this);
     }
@@ -57,18 +59,18 @@ public class LoginActivity extends Activity implements View.OnClickListener{
     @SuppressLint("NonConstantResourceId")
     @Override
     public void onClick(View v) {
-        switch (v.getId()){
+        switch (v.getId()) {
             case R.id.enter_ip:
                 AlertDialog.Builder dialog = new AlertDialog.Builder(LoginActivity.this);
                 dialog.setTitle("请输入服务器IP");
                 final View view = View.inflate(LoginActivity.this, R.layout.udpserver_ip, null);
                 EditText et = view.findViewById(R.id.server_ip);
                 dialog.setView(view);
-                dialog.setPositiveButton("确认" , new DialogInterface.OnClickListener() {
+                dialog.setPositiveButton("确认", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         String ip = et.getText().toString();
-                        Toast.makeText(LoginActivity.this, "云端服务器IP地址: " + ip, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "云服务器IP地址: " + ip, Toast.LENGTH_SHORT).show();
                         server_ip = ip;
                         dialogInterface.cancel();
                     }
