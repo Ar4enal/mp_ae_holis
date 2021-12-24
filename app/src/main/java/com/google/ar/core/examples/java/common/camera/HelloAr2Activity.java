@@ -61,6 +61,8 @@ import com.google.mediapipe.components.FrameProcessor;
 import com.google.mediapipe.components.PermissionHelper;
 import com.google.mediapipe.formats.proto.LandmarkProto;
 import com.google.mediapipe.framework.AndroidAssetUtil;
+import com.google.mediapipe.framework.AndroidPacketCreator;
+import com.google.mediapipe.framework.Packet;
 import com.google.mediapipe.framework.PacketGetter;
 import com.google.mediapipe.glutil.EglManager;
 import com.huawei.hiar.ARConfigBase;
@@ -88,7 +90,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is a simple example that shows how to create an augmented reality (AR) application using the
@@ -216,7 +220,10 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 Constants.outputVideoStreamName);
         processor.getVideoSurfaceOutput().setFlipY(FLIP_FRAMES_VERTICALLY);
 
-        //PermissionHelper.checkAndRequestCameraPermissions(this);
+        /*AndroidPacketCreator packetCreator = processor.getPacketCreator();
+        Map<String, Packet> inputSidePackets = new HashMap<>();
+        inputSidePackets.put("model_complexity", packetCreator.createInt32(0));
+        processor.setInputSidePackets(inputSidePackets);*/
 
         processor.addPacketCallback(
                 Constants.poseLandmarks,
@@ -226,9 +233,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                         LandmarkProto.NormalizedLandmarkList PoseLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         String landmarks_list = getLandmarksListObject(PoseLandmarks, "pose");
                         send_UDP(landmarks_list, "pose");
-                        //LandmarkProto.LandmarkList poseWorldLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
-                        //String landmarks_list = getWorldLandmarks(poseWorldLandmarks, "pose");
-                        //send_UDP(landmarks_list, "pose");
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -238,8 +242,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        //LandmarkProto.LandmarkList leftHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
-                        //String landmarks_list = getWorldLandmarks(leftHandLandmarks, "left_hand");
                         LandmarkProto.NormalizedLandmarkList leftHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         String landmarks_list = getLandmarksListObject(leftHandLandmarks, "left_hand");
                         send_UDP(landmarks_list, "left_hand");
@@ -252,8 +254,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 (packet) -> {
                     byte[] landmarksRaw = PacketGetter.getProtoBytes(packet);
                     try {
-                        //LandmarkProto.LandmarkList rightHandLandmarks = LandmarkProto.LandmarkList.parseFrom(landmarksRaw);
-                        //String landmarks_list = getWorldLandmarks(rightHandLandmarks, "right_hand");
                         LandmarkProto.NormalizedLandmarkList rightHandLandmarks = LandmarkProto.NormalizedLandmarkList.parseFrom(landmarksRaw);
                         String landmarks_list = getLandmarksListObject(rightHandLandmarks, "right_hand");
                         send_UDP(landmarks_list, "right_hand");
@@ -330,7 +330,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
 
                 session = new ARSession(this);
                 mArConfig = new ARFaceTrackingConfig(session);
-                mArConfig.setPowerMode(ARConfigBase.PowerMode.POWER_SAVING);
+                mArConfig.setPowerMode(ARConfigBase.PowerMode.PERFORMANCE_FIRST);
                 if (isOpenCameraOutside) {
                     mArConfig.setImageInputMode(ARConfigBase.ImageInputMode.EXTERNAL_INPUT_ALL);
                 }
@@ -549,79 +549,6 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         }
     }
 
-
-/*    private static List<PoseAngle> calculateAngle(List<PoseLandmark> result_landmarks) {
-        HashMap<String, float[]> PoseAngleMap = setPoseLandmarks(result_landmarks);
-        List<PoseAngle> poseAngle = new ArrayList<>();
-
-        for (String name : PoseAngleMap.keySet()){
-            PoseAngle current_angle = new PoseAngle();
-            current_angle.setName(name);
-            if (name.equals("left_elbow") || name.equals("right_elbow")){
-                current_angle.setAngle(getElbowDegree(PoseAngleMap.get(name)));
-            }
-            else {
-                current_angle.setAngle(getDegree(PoseAngleMap.get(name)));
-            }
-            current_angle.setScore(PoseAngleMap.get(name)[6]);
-            poseAngle.add(current_angle);
-        }
-
-        return poseAngle;
-    }
-
-    private static HashMap<String, float[]> setPoseLandmarks(List<PoseLandmark> result_landmarks) {
-        HashMap<String, float[]> PoseAngleMap = new HashMap<>();
-        PoseAngleMap.put("left_wrist", new float[]{result_landmarks.get(5).getX(), result_landmarks.get(5).getY(), result_landmarks.get(11).getX(), result_landmarks.get(11).getY(), result_landmarks.get(3).getX(), result_landmarks.get(3).getY(), result_landmarks.get(5).getScore()});
-        PoseAngleMap.put("left_elbow", new float[]{result_landmarks.get(3).getX(), result_landmarks.get(3).getY(), result_landmarks.get(5).getX(), result_landmarks.get(5).getY(), result_landmarks.get(1).getX(), result_landmarks.get(1).getY(), result_landmarks.get(3).getScore()});
-        PoseAngleMap.put("left_shoulder", new float[]{result_landmarks.get(1).getX(), result_landmarks.get(1).getY(), result_landmarks.get(3).getX(), result_landmarks.get(3).getY(), result_landmarks.get(13).getX(), result_landmarks.get(13).getY(), result_landmarks.get(1).getScore()});
-        PoseAngleMap.put("right_shoulder", new float[]{result_landmarks.get(0).getX(), result_landmarks.get(0).getY(), result_landmarks.get(2).getX(), result_landmarks.get(2).getY(), result_landmarks.get(12).getX(), result_landmarks.get(12).getY(), result_landmarks.get(0).getScore()});
-        PoseAngleMap.put("right_elbow", new float[]{result_landmarks.get(2).getX(), result_landmarks.get(2).getY(), result_landmarks.get(4).getX(), result_landmarks.get(4).getY(), result_landmarks.get(0).getX(), result_landmarks.get(0).getY(), result_landmarks.get(2).getScore()});
-        PoseAngleMap.put("right_wrist", new float[]{result_landmarks.get(4).getX(), result_landmarks.get(4).getY(), result_landmarks.get(10).getX(), result_landmarks.get(10).getY(), result_landmarks.get(2).getX(), result_landmarks.get(2).getY(), result_landmarks.get(4).getScore()});
-        return PoseAngleMap;
-    }
-
-    private static int getDegree(float[] floats){
-        float p1x = floats[0];
-        float p1y = floats[1];
-        float p2x = floats[2];
-        float p2y = floats[3];
-        float p3x = floats[4];
-        float p3y = floats[5];
-        float vector = (p2x-p1x)*(p3x-p1x) + (p2y-p1y)*(p3y-p1y);
-        double sqrt = Math.sqrt(
-                (Math.abs((p2x-p1x)*(p2x-p1x)) + Math.abs((p2y-p1y)*(p2y-p1y)))   *
-                        (Math.abs((p3x-p1x)*(p3x-p1x)) + Math.abs((p3y-p1y)*(p3y-p1y)))
-        );
-        double radian = Math.acos(vector/sqrt);
-        return (int) (180*radian/ Math.PI);
-    }
-
-    private static int getElbowDegree(float[] floats) {
-        float p1x = floats[0];
-        float p1y = floats[1];
-        float p2x = floats[2];
-        float p2y = floats[3];
-        float p3x = floats[4];
-        float p3y = floats[5];
-        float k = (p1y - p3y) / (p1x - p3x);
-        float b = p1y - k * p1x;
-        int angle = 0;
-        float vector = (p2x-p1x)*(p3x-p1x) + (p2y-p1y)*(p3y-p1y);
-        double sqrt = Math.sqrt(
-                (Math.abs((p2x-p1x)*(p2x-p1x)) + Math.abs((p2y-p1y)*(p2y-p1y)))   *
-                        (Math.abs((p3x-p1x)*(p3x-p1x)) + Math.abs((p3y-p1y)*(p3y-p1y)))
-        );
-        double radian = Math.acos(vector/sqrt);
-        if ((p2x * k + b) >= p2y){
-            angle = (int) -(180*radian/ Math.PI);
-        }
-        else if ((p2x * k + b) < p2y){
-            angle = (int) (180*radian/ Math.PI);
-        }
-        return angle;
-    }*/
-
     private static void kalmanUpdateWorld(LandmarkProto.Landmark landmark, int poseLandmarkIndex){
         kalmanLowPassFilter.setFilterHashMapNow3D(poseLandmarkIndex, landmark.getX(), landmark.getY(), landmark.getZ());
         measurementUpdate(poseLandmarkIndex, kalmanLowPassFilter);
@@ -716,8 +643,8 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
     }
 
     private static void handMeasurementUpdate(int poseLandmarkIndex, HandKalmanFilter measurement){
-        Float kalmanParamQ = Constants.kalmanParamQ;
-        Float kalmanParamR = Constants.kalmanParamR;
+        Float kalmanParamQ = Constants.kalmanHandParamQ;
+        Float kalmanParamR = Constants.kalmanHandParamR;
         measurement.setK(poseLandmarkIndex,
                 (measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[0] + kalmanParamQ + kalmanParamR),
                 (measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ)/(measurement.getFilterHashMap().get(poseLandmarkIndex).P[1] + kalmanParamQ + kalmanParamR),

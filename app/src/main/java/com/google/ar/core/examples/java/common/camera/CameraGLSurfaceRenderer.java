@@ -181,7 +181,7 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                 draw(mOffscreenTexture);
                 for (ARFace face : faces) {
                     if (face.getTrackingState() == ARTrackable.TrackingState.TRACKING){
-                        mFaceGeometryDisplay.onDrawFrame(camera, face);
+                        //mFaceGeometryDisplay.onDrawFrame(camera, face);
                         ARFaceBlendShapes blendShapes = face.getFaceBlendShapes();
                         JSONObject faceBlendShapes = new JSONObject(blendShapes.getBlendShapeDataMapKeyString());
                         kalmanUpdate(face.getPose());
@@ -318,8 +318,8 @@ public class CameraGLSurfaceRenderer implements EglSurfaceView.Renderer {
                 VERTEX_STRIDE_BYTES,
                 vertexBufferFBO);
 
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(programHandle, "stereoARMode"), 2);
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programHandle, "eyeA"), 0.0f);
+        //GLES20.glUniform1i(GLES20.glGetUniformLocation(programHandle, "stereoARMode"), 2);
+        //GLES20.glUniform1f(GLES20.glGetUniformLocation(programHandle, "eyeA"), 0.0f);
 
 
         GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, displayMatrix, 0);

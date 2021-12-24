@@ -38,7 +38,11 @@ public class Constants {
 
     public static int minBodyIndex = 10;
     public static int maxBodyIndex = 25;
-    public static Float kalmanParamQ = 0.001f;
-    public static Float kalmanParamR = 0.0015f;
+    //public static Float kalmanParamQ = 0.001f;
+    //public static Float kalmanParamR = 0.0015f;
+    public static Float kalmanParamQ = 0.0005f;
+    public static Float kalmanParamR = 0.0025f;
+    public static Float kalmanHandParamQ = 0.001f;
+    public static Float kalmanHandParamR = 0.0015f;
     public static Float lowPassParam = 0.1f;
 }
