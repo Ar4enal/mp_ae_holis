@@ -83,7 +83,10 @@ import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SessionDescription;
+import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoSource;
+import org.webrtc.VideoTrack;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -102,7 +105,7 @@ import java.util.Map;
 public class HelloAr2Activity extends AppCompatActivity implements SignalingClient.Callback{
 
     public ARSession session;
-    
+    public SurfaceViewRenderer remoteView;
     private boolean isOpenCameraOutside = true;
     private CameraHelper mCamera;
     private int textureId = -1;
@@ -191,6 +194,10 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         //VideoSource videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         // create VideoTrack
         //VideoTrack videoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
+
+        remoteView = findViewById(R.id.remoteView);
+        remoteView.setMirror(false);
+        remoteView.init(eglBaseContext, null);
 
         AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
         AudioTrack audioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
@@ -302,6 +309,15 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
             public void onIceCandidate(IceCandidate iceCandidate) {
                 super.onIceCandidate(iceCandidate);
                 SignalingClient.get().sendIceCandidate(iceCandidate);
+            }
+
+            @Override
+            public void onAddStream(MediaStream mediaStream) {
+                super.onAddStream(mediaStream);
+                VideoTrack remoteVideoTrack = mediaStream.videoTracks.get(0);
+                runOnUiThread(() -> {
+                    remoteVideoTrack.addSink(remoteView);
+                });
             }
         });
 
