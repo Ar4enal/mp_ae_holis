@@ -202,7 +202,6 @@ public class SignalingClient {
         jo.put("sdp", sdp.description);
         jo.put("type", "offer");
         RequestBody body = RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), String.valueOf(jo));
-        //Log.d("offer", String.valueOf(jo));
         Request request = new Request.Builder().post(body).url(url + "/message?peer_id=" + localID + "&to=" + peerID).build();
 
         client.newCall(request).enqueue(new okhttp3.Callback() {

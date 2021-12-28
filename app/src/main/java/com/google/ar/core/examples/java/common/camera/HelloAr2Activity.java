@@ -190,10 +190,10 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
                 .createPeerConnectionFactory();
 
         // create VideoCapturer
-        //VideoCapturer videoCapturer = createCameraCapturer(true);
-        //VideoSource videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
+        VideoCapturer videoCapturer = createCameraCapturer(true);
+        VideoSource videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         // create VideoTrack
-        //VideoTrack videoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
+        VideoTrack videoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
 
         remoteView = findViewById(R.id.remoteView);
         remoteView.setMirror(false);
@@ -203,7 +203,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         AudioTrack audioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
 
         mediaStream = peerConnectionFactory.createLocalMediaStream("mediaStream");
-        //mediaStream.addTrack(videoTrack);
+        mediaStream.addTrack(videoTrack);
         mediaStream.addTrack(audioTrack);
 
         SignalingClient.get().setCallback(this);
