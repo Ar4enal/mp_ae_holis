@@ -153,7 +153,7 @@ public class SignalingClient {
 
     public void sendSignOut(){
         if (localID != null){
-            Request request = new Request.Builder().get().url(url + "/sign_out?mobile").build();
+            Request request = new Request.Builder().get().url(url + "/sign_out?peer_id=" + localID).build();
 
             client.newCall(request).enqueue(new okhttp3.Callback() {
                 @Override

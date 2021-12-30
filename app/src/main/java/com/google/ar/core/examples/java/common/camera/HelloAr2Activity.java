@@ -392,6 +392,7 @@ public class HelloAr2Activity extends AppCompatActivity implements SignalingClie
         // Hide preview display until we re-open the camera again.
         previewDisplayView.setVisibility(View.GONE);
         // ########## End Mediapipe ##########
+        SignalingClient.get().sendSignOut();
     }
 
     @Override
